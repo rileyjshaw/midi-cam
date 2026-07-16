@@ -6,7 +6,6 @@ import {
 	Check,
 	ChevronDown,
 	ChevronUp,
-	CircleHelp,
 	Copy,
 	Eye,
 	EyeOff,
@@ -200,7 +199,6 @@ function App() {
 	const [editOpen, setEditOpen] = createSignal(config().connections.length === 0);
 	const [fileMenuOpen, setFileMenuOpen] = createSignal(false);
 	const [aboutOpen, setAboutOpen] = createSignal(false);
-	const [helpOpen, setHelpOpen] = createSignal(false);
 	const [saveDialogOpen, setSaveDialogOpen] = createSignal(false);
 	const [loadDialogOpen, setLoadDialogOpen] = createSignal(false);
 	const [saveName, setSaveName] = createSignal('');
@@ -222,6 +220,9 @@ function App() {
 	let calibrationTimer: number | undefined;
 	let toastTimer: number | undefined;
 	const midiRouter = new MidiRouter();
+	const setupComplete = createMemo(
+		() => videoReady() && outputs().some(output => output.id === config().midiOutputId),
+	);
 
 	const showToast = (message: string) => {
 		setToast(message);
@@ -511,7 +512,7 @@ function App() {
 				cancelCalibration();
 				return;
 			}
-			const anotherDialogOpen = aboutOpen() || helpOpen() || saveDialogOpen() || loadDialogOpen();
+			const anotherDialogOpen = aboutOpen() || saveDialogOpen() || loadDialogOpen();
 			if (!editOpen() && !anotherDialogOpen) {
 				// Wait until this key event finishes so the newly mounted dialog cannot consume it.
 				window.queueMicrotask(() => setEditOpen(true));
@@ -572,9 +573,6 @@ function App() {
 					</button>
 					<button class="menu-button" type="button" onClick={() => setAboutOpen(true)}>
 						About
-					</button>
-					<button class="menu-button" type="button" onClick={() => setHelpOpen(true)}>
-						Help
 					</button>
 				</div>
 				<div class="menu-status" title={midiError() ?? undefined}>
@@ -1124,20 +1122,28 @@ function App() {
 					. Each tracked performer is routed to their own ascending MIDI channel.
 				</p>
 				<small>Camera frames and landmark data stay in your browser.</small>
-			</KDialog>
-
-			<KDialog open={helpOpen()} onOpenChange={setHelpOpen} title="MIDI Cam help" class="info-dialog help-dialog">
-				<button class="dialog-close" type="button" onClick={() => setHelpOpen(false)}>
-					<X size={18} />
-				</button>
-				<CircleHelp size={24} />
-				<h2>Quick start</h2>
-				<ol>
-					<li>Enable the camera and MIDI output.</li>
-					<li>Open Edit and connect two landmarks.</li>
-					<li>Choose a measurement type and configure CC settings.</li>
-					<li>Calibrate, then move through the full range.</li>
-				</ol>
+				<section class="about-quick-start">
+					<h3>Quick start</h3>
+					<ol>
+						<li classList={{ complete: setupComplete() }}>
+							<span>Enable the camera and MIDI output.</span>
+							<Show when={setupComplete()}>
+								<strong class="setup-complete">
+									<Check size={13} /> Complete
+								</strong>
+							</Show>
+						</li>
+						<li>Open Edit and connect two landmarks.</li>
+						<li>Choose a measurement type and configure CC settings.</li>
+						<li>Calibrate, then move through the full range.</li>
+					</ol>
+				</section>
+				<p class="about-credit">
+					Built by{' '}
+					<a href="https://misery.co" target="_blank" rel="noopener noreferrer">
+						Misery &amp; Company
+					</a>
+				</p>
 			</KDialog>
 
 			<Show when={toast()}>

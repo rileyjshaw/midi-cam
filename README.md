@@ -12,4 +12,3 @@ npm run dev
 ---
 
 Built with [ShaderPad](https://misery.co/shaderpad).
-

@@ -9,10 +9,7 @@ npm install
 npm run dev
 ```
 
-Use a browser with WebGL 2, camera access, and Web MIDI support. Camera and MIDI access require a secure context outside localhost.
+---
 
-## Commands
+Built with [ShaderPad](https://misery.co/shaderpad).
 
-- `npm run dev` — start the development server
-- `npm run build` — type-check and create a production build
-- `npm test` — run measurement and configuration tests

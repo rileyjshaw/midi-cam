@@ -513,9 +513,8 @@ function App() {
 			}
 			const anotherDialogOpen = aboutOpen() || helpOpen() || saveDialogOpen() || loadDialogOpen();
 			if (!editOpen() && !anotherDialogOpen) {
-				window.queueMicrotask(() => {
-					if (!event.defaultPrevented) setEditOpen(true);
-				});
+				// Wait until this key event finishes so the newly mounted dialog cannot consume it.
+				window.queueMicrotask(() => setEditOpen(true));
 			}
 			return;
 		}

@@ -46,6 +46,13 @@ const COMBOBOX_ENTRIES: ComboboxEntry[] = LANDMARK_GROUPS.flatMap((group) => [
 export function LandmarkCombobox(props: LandmarkComboboxProps) {
   const [collapsed, setCollapsed] = createSignal<Set<string>>(new Set())
   const selected = createMemo(() => (props.value ? LANDMARK_BY_ID.get(props.value) ?? null : null))
+  let inputElement: HTMLInputElement | undefined
+
+  const clearSearch = () => {
+    if (!inputElement) return
+    inputElement.value = ''
+    inputElement.dispatchEvent(new Event('input', { bubbles: true }))
+  }
 
   const toggleGroup = (label: string) => {
     setCollapsed((current) => {
@@ -80,6 +87,9 @@ export function LandmarkCombobox(props: LandmarkComboboxProps) {
       optionDisabled={isGroupHeader}
       value={selected()}
       onChange={(entry) => props.onChange(entry && !isGroupHeader(entry) ? entry.id : null)}
+      onOpenChange={(open) => {
+        if (open) window.queueMicrotask(clearSearch)
+      }}
       defaultFilter={filterEntry}
       triggerMode="focus"
       placeholder="Choose landmark"
@@ -129,8 +139,8 @@ export function LandmarkCombobox(props: LandmarkComboboxProps) {
       <Combobox.Control class="combobox-control" aria-label={props.label}>
         <Search size={14} class="combobox-search" />
         <Combobox.Input
+          ref={(element) => { inputElement = element }}
           class="combobox-input"
-          onFocus={(event) => event.currentTarget.select()}
         />
         <Combobox.Trigger class="combobox-trigger" aria-label={`Open ${props.label}`}>
           <Combobox.Icon>

@@ -650,8 +650,8 @@
 }
 
 .menu-bar {
-  padding-top: 3px;
-  border-top: 3px solid var(--accent);
+  padding-top: 0;
+  border-top: 0;
   border-bottom-color: rgba(255, 255, 255, 0.28);
   background: rgba(5, 7, 7, 0.96);
   backdrop-filter: none;

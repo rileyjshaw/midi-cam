@@ -7,18 +7,18 @@ import type {
 } from './types'
 
 const HAND_LANDMARKS = [
-  [0, 'Wrist'],
-  [2, 'Thumb base'],
-  [4, 'Thumb tip'],
-  [5, 'Index base'],
-  [8, 'Index tip'],
-  [9, 'Middle base'],
-  [12, 'Middle tip'],
-  [13, 'Ring base'],
-  [16, 'Ring tip'],
-  [17, 'Pinky base'],
-  [20, 'Pinky tip'],
-  [21, 'Hand center'],
+  [0, 'wrist'],
+  [2, 'thumb base'],
+  [4, 'thumb tip'],
+  [5, 'index base'],
+  [8, 'index tip'],
+  [9, 'middle base'],
+  [12, 'middle tip'],
+  [13, 'ring base'],
+  [16, 'ring tip'],
+  [17, 'pinky base'],
+  [20, 'pinky tip'],
+  [21, 'hand center'],
 ] as const
 
 const FACE_LANDMARKS = [
@@ -65,8 +65,6 @@ const POSE_LANDMARKS = [
   [28, 'Right ankle'],
   [29, 'Left heel'],
   [30, 'Right heel'],
-  [31, 'Left foot index'],
-  [32, 'Right foot index'],
   [33, 'Body center'],
   [34, 'Left hand center'],
   [35, 'Right hand center'],

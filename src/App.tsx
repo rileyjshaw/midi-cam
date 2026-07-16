@@ -8,11 +8,12 @@ import {
 	ChevronUp,
 	CircleHelp,
 	Copy,
+	Eye,
+	EyeOff,
 	FilePlus2,
 	FolderOpen,
 	Info,
 	MoreHorizontal,
-	Palette,
 	Plus,
 	Save,
 	SlidersHorizontal,
@@ -957,7 +958,11 @@ function App() {
 																	})
 																}
 															>
-																<Palette size={15} />{' '}
+																{connection().enabled ? (
+																	<EyeOff size={15} />
+																) : (
+																	<Eye size={15} />
+																)}{' '}
 																{connection().enabled ? 'Disable' : 'Enable'}
 															</DropdownMenu.Item>
 															<DropdownMenu.Separator class="menu-separator" />

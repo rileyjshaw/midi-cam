@@ -1,13 +1,13 @@
-import { cp, mkdir, writeFile } from 'node:fs/promises'
+import { cp, mkdir, writeFile } from 'node:fs/promises';
 
-await mkdir('dist/server', { recursive: true })
-await mkdir('dist/.openai', { recursive: true })
+await mkdir('dist/server', { recursive: true });
+await mkdir('dist/.openai', { recursive: true });
 
-await cp('.openai/hosting.json', 'dist/.openai/hosting.json')
+await cp('.openai/hosting.json', 'dist/.openai/hosting.json');
 
 await writeFile(
-  'dist/server/index.js',
-  `export default {
+	'dist/server/index.js',
+	`export default {
   async fetch(request, env) {
     let response = await env.ASSETS.fetch(request);
     if (response.status === 404 && request.method === 'GET') {
@@ -20,4 +20,4 @@ await writeFile(
   },
 };
 `,
-)
+);

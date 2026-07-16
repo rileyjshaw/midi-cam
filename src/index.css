@@ -1,66 +1,89 @@
 :root {
-  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  color: #f7f8fb;
-  background: #050608;
-  font-synthesis: none;
-  font-variant-numeric: tabular-nums slashed-zero;
-  font-feature-settings: "tnum" 1, "zero" 1;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  --panel: rgba(8, 10, 10, 0.91);
-  --panel-solid: #0a0c0c;
-  --panel-raised: #111414;
-  --border: rgba(255, 255, 255, 0.16);
-  --border-strong: rgba(255, 255, 255, 0.32);
-  --muted: #a0a6a4;
-  --dim: #68706d;
-  --accent: #e5ff19;
-  --danger: #ff3b30;
+	font-family:
+		Inter,
+		ui-sans-serif,
+		-apple-system,
+		BlinkMacSystemFont,
+		'Segoe UI',
+		sans-serif;
+	color: #f7f8fb;
+	background: #050608;
+	font-synthesis: none;
+	font-variant-numeric: tabular-nums slashed-zero;
+	font-feature-settings:
+		'tnum' 1,
+		'zero' 1;
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	--panel: rgba(8, 10, 10, 0.91);
+	--panel-solid: #0a0c0c;
+	--panel-raised: #111414;
+	--border: rgba(255, 255, 255, 0.16);
+	--border-strong: rgba(255, 255, 255, 0.32);
+	--muted: #a0a6a4;
+	--dim: #68706d;
+	--accent: #e5ff19;
+	--danger: #ff3b30;
 }
 
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
-  font-variant-numeric: tabular-nums slashed-zero;
-  font-feature-settings: "tnum" 1, "zero" 1;
+	box-sizing: border-box;
+	font-variant-numeric: tabular-nums slashed-zero;
+	font-feature-settings:
+		'tnum' 1,
+		'zero' 1;
 }
 
 html,
 body,
-#root { width: 100%; min-width: 320px; min-height: 100%; margin: 0; }
+#root {
+	width: 100%;
+	min-width: 320px;
+	min-height: 100%;
+	margin: 0;
+}
 
-body { overflow: hidden; }
+body {
+	overflow: hidden;
+}
 
 button,
 input,
 select {
-  font: inherit;
-  font-variant-numeric: tabular-nums slashed-zero;
-  font-feature-settings: "tnum" 1, "zero" 1;
+	font: inherit;
+	font-variant-numeric: tabular-nums slashed-zero;
+	font-feature-settings:
+		'tnum' 1,
+		'zero' 1;
 }
 
-button { color: inherit; }
+button {
+	color: inherit;
+}
 
 button,
-select { cursor: pointer; }
+select {
+	cursor: pointer;
+}
 
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-[role="option"]:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+[role='option']:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 2px;
 }
 
 .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }

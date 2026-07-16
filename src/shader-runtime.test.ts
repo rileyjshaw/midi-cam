@@ -68,6 +68,20 @@ describe('generated ShaderPad program', () => {
     expect(generated.source).not.toContain('u_leftHandMap')
   })
 
+  it('generates a time-evolving point-to-point hue gradient for rainbow lines', () => {
+    const config = createDefaultConfig()
+    const connection = createConnection([])
+    connection.pointA = 'pose:15'
+    connection.pointB = 'pose:16'
+    connection.color = 'rainbow'
+    config.connections = [connection]
+
+    const generated = generateShader(config)
+    expect(generated.source).toContain('uniform float u_time;')
+    expect(generated.source).toContain('colorPosition_0_0 * 0.42')
+    expect(generated.source).toContain('hsv2rgb')
+  })
+
   it('does not rebuild for MIDI-only edits but does rebuild for shader edits', () => {
     const config = createDefaultConfig()
     const connection = createConnection([])

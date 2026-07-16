@@ -95,8 +95,20 @@ function connectionBlock(
   personIndex: number,
   connectionIndex: number,
 ): string {
-  const [r, g, b] = hexToRgb(color)
+  const isRainbow = color === 'rainbow'
+  const [r, g, b] = isRainbow ? [0, 0, 0] : hexToRgb(color)
   const suffix = `${connectionIndex}_${personIndex}`
+  const colorSetup = isRainbow ? `
+      vec2 colorSegment_${suffix} = pointB_${suffix} - pointA_${suffix};
+      float colorPosition_${suffix} = clamp(
+        dot(v_uv - pointA_${suffix}, colorSegment_${suffix}) /
+          max(dot(colorSegment_${suffix}, colorSegment_${suffix}), 0.0000001),
+        0.0,
+        1.0
+      );` : ''
+  const colorValue = isRainbow
+    ? `hsv2rgb(vec3(fract(u_time * 0.055 + colorPosition_${suffix} * 0.42), 0.78, 1.0))`
+    : `vec3(${float(r)}, ${float(g)}, ${float(b)})`
   return `
   {
     vec2 pointA_${suffix} = vec2(0.0);
@@ -113,8 +125,9 @@ function connectionBlock(
         40.0,
         1.25
       );
+      ${colorSetup}
       lineIntensity += glow_${suffix};
-      lineColor += glow_${suffix} * vec3(${float(r)}, ${float(g)}, ${float(b)});
+      lineColor += glow_${suffix} * ${colorValue};
     }
   }`
 }
@@ -134,6 +147,7 @@ export function generateShader(config: AppConfig): {
     connections.flatMap(({ connection }) => [connection.pointA, connection.pointB]),
   )
   const drawnConnections = connections.filter(({ connection }) => connection.color !== 'transparent')
+  const usesRainbow = drawnConnections.some(({ connection }) => connection.color === 'rainbow')
   const drawnEndpoints = drawnConnections.flatMap(({ pointA, pointB }) => [pointA, pointB])
   const uniformUsage: ShaderUniformUsage = {
     pose: drawnEndpoints.some((point) => point.source === 'pose'),
@@ -142,6 +156,7 @@ export function generateShader(config: AppConfig): {
     rightHand: drawnEndpoints.some((point) => point.source === 'hand' && point.side === 'right'),
   }
   const uniformDeclarations = [
+    usesRainbow ? 'uniform float u_time;' : '',
     uniformUsage.pose ? `uniform int u_poseMap[${config.maxPeople}];` : '',
     uniformUsage.face ? `uniform int u_faceMap[${config.maxPeople}];` : '',
     uniformUsage.leftHand ? `uniform int u_leftHandMap[${config.maxPeople}];` : '',
@@ -173,6 +188,11 @@ float falloffEase(float x) {
   t *= t;
   t *= t;
   return t;
+}
+
+vec3 hsv2rgb(vec3 c) {
+  vec3 p = abs(fract(c.xxx + vec3(0.0, 0.666667, 0.333333)) * 6.0 - 3.0);
+  return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
 }
 
 float renderGlowingSegmentExpWidth(

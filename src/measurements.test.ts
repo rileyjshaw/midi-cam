@@ -17,6 +17,7 @@ describe('measurement math', () => {
 
   it('keeps horizontal in the middle and vertical at the ends', () => {
     expect(measurePoints({ x: 0, y: 0 }, { x: 1, y: 0 }, 'angle')?.value).toBe(0)
+    expect(measurePoints({ x: 0, y: 0 }, { x: 1, y: 1 }, 'angle')?.value).toBe(-45)
     expect(wrapUndirectedAngle(90)).toBe(-90)
     expect(wrapUndirectedAngle(-90)).toBe(-90)
   })
@@ -36,7 +37,7 @@ describe('measurement math', () => {
       'wrapped',
       89,
     )?.value
-    expect(value).toBeLessThan(-89)
+    expect(value).toBeGreaterThan(89)
   })
 })
 

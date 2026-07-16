@@ -29,7 +29,7 @@ export function measurePoints(
   if (type === 'distanceY') return { value: Math.abs(dy) }
   if (Math.abs(dx) + Math.abs(dy) < 1e-7) return null
 
-  const wrapped = wrapUndirectedAngle((Math.atan2(dy, dx) * 180) / Math.PI)
+  const wrapped = wrapUndirectedAngle((-Math.atan2(dy, dx) * 180) / Math.PI)
   const value = angleMode === 'continuous' ? unwrapAngle(wrapped, previousAngle) : wrapped
   return { value, angleState: value }
 }

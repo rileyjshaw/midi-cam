@@ -2,11 +2,40 @@ import { defaultInputRange } from './landmarks'
 import type { AppConfig, ConnectionConfig, MeasurementType } from './types'
 
 export const COLOR_PALETTE = [
-  '#FFFFFF', '#0A0A0C', 'transparent', '#64748B', '#8B6F47', '#F5E6C8',
-  '#FF4D6D', '#FF6B6B', '#FF8C42', '#FFB703', '#FDE047', '#D9F99D',
-  '#84CC16', '#22C55E', '#10B981', '#14B8A6', '#22D3EE', '#38BDF8',
-  '#3B82F6', '#6366F1', '#8B5CF6', '#A855F7', '#D946EF', '#F472B6',
+  'transparent', '#FFFFFF', '#8C919B', '#0A0A0C', '#D4AF37', 'rainbow',
+  '#FF334F', '#FFD60A', '#246BFD', '#8B5CF6', '#FF7A1A', '#20C866',
+  '#FF6B6B', '#F472B6', '#D946EF', '#22D3EE', '#38BDF8', '#6EE7B7',
+  '#9F1239', '#C65D3B', '#E5A93D', '#84CC16', '#0F766E', '#4F46E5',
 ] as const
+
+export const COLOR_NAMES: Record<(typeof COLOR_PALETTE)[number], string> = {
+  transparent: 'Invisible',
+  '#FFFFFF': 'White',
+  '#8C919B': 'Grey',
+  '#0A0A0C': 'Black',
+  '#D4AF37': 'Gold',
+  rainbow: 'Rainbow',
+  '#FF334F': 'Red',
+  '#FFD60A': 'Yellow',
+  '#246BFD': 'Blue',
+  '#8B5CF6': 'Purple',
+  '#FF7A1A': 'Orange',
+  '#20C866': 'Green',
+  '#FF6B6B': 'Coral',
+  '#F472B6': 'Rose',
+  '#D946EF': 'Magenta',
+  '#22D3EE': 'Cyan',
+  '#38BDF8': 'Sky',
+  '#6EE7B7': 'Mint',
+  '#9F1239': 'Burgundy',
+  '#C65D3B': 'Terracotta',
+  '#E5A93D': 'Amber',
+  '#84CC16': 'Lime',
+  '#0F766E': 'Deep teal',
+  '#4F46E5': 'Indigo',
+}
+
+const DEFAULT_CONNECTION_COLORS = COLOR_PALETTE.filter((color) => color !== 'transparent')
 
 export function createConnection(
   existing: ConnectionConfig[],
@@ -28,7 +57,7 @@ export function createConnection(
     inputMax,
     calibrated: false,
     angleMode: 'continuous',
-    color: COLOR_PALETTE[existing.length % COLOR_PALETTE.length],
+    color: DEFAULT_CONNECTION_COLORS[existing.length % DEFAULT_CONNECTION_COLORS.length],
     enabled: true,
   }
 }

@@ -23,15 +23,17 @@ import {
 } from 'lucide-solid'
 import {
   For,
+  Index,
   Show,
   createEffect,
   createMemo,
   createSignal,
   createUniqueId,
   onCleanup,
+  untrack,
 } from 'solid-js'
 import './App.css'
-import { COLOR_PALETTE, cloneConfig, createConnection, shaderSignature } from './config'
+import { COLOR_NAMES, COLOR_PALETTE, cloneConfig, createConnection, shaderSignature } from './config'
 import { LandmarkCombobox } from './LandmarkCombobox'
 import {
   MEASUREMENT_LABELS,
@@ -72,6 +74,8 @@ function NumberField(props: {
   onChange: (value: number) => void
 }) {
   const inputId = createUniqueId()
+  let repeatDelay: number | undefined
+  let repeatTimer: number | undefined
   const step = () => props.step ?? 1
   const nudge = (direction: -1 | 1) => {
     let next = props.value + step() * direction
@@ -79,6 +83,23 @@ function NumberField(props: {
     if (props.max !== undefined) next = Math.min(props.max, next)
     props.onChange(Number(next.toFixed(8)))
   }
+  const stopNudging = () => {
+    if (repeatDelay) window.clearTimeout(repeatDelay)
+    if (repeatTimer) window.clearInterval(repeatTimer)
+    repeatDelay = undefined
+    repeatTimer = undefined
+  }
+  const startNudging = (event: PointerEvent, direction: -1 | 1) => {
+    event.preventDefault()
+    event.stopPropagation()
+    ;(event.currentTarget as HTMLButtonElement).setPointerCapture(event.pointerId)
+    stopNudging()
+    nudge(direction)
+    repeatDelay = window.setTimeout(() => {
+      repeatTimer = window.setInterval(() => nudge(direction), 65)
+    }, 340)
+  }
+  onCleanup(stopNudging)
 
   return (
     <div class="number-field">
@@ -100,25 +121,23 @@ function NumberField(props: {
           <button
             type="button"
             aria-label={`Increase ${props.label}`}
-            onPointerDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
+            onPointerDown={(event) => startNudging(event, 1)}
+            onPointerUp={stopNudging}
+            onPointerCancel={stopNudging}
             onClick={(event) => {
               event.stopPropagation()
-              nudge(1)
+              if (event.detail === 0) nudge(1)
             }}
           ><ChevronUp size={10} /></button>
           <button
             type="button"
             aria-label={`Decrease ${props.label}`}
-            onPointerDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
+            onPointerDown={(event) => startNudging(event, -1)}
+            onPointerUp={stopNudging}
+            onPointerCancel={stopNudging}
             onClick={(event) => {
               event.stopPropagation()
-              nudge(-1)
+              if (event.detail === 0) nudge(-1)
             }}
           ><ChevronDown size={10} /></button>
         </span>
@@ -208,6 +227,7 @@ function App() {
     const sources = pluginSourcesForConnections(ids)
     return [...sources].filter((source) => source !== 'screen')
   })
+  const currentShaderSignature = createMemo(() => shaderSignature(config()))
 
   const sampleFor = (connectionId: string) =>
     samples().find((sample) => sample.connectionId === connectionId)
@@ -237,7 +257,7 @@ function App() {
       runtime = createShaderRuntime({
         canvas,
         video,
-        config: cloneConfig(config()),
+        config: untrack(() => cloneConfig(config())),
         getConfig: config,
         onMeasurements: routeSamples,
         onStatus: setEngineStatus,
@@ -252,7 +272,7 @@ function App() {
   })
 
   createEffect(() => {
-    const signature = shaderSignature(config())
+    const signature = currentShaderSignature()
     const ready = videoReady()
     void signature
     if (ready) rebuildRuntime()
@@ -460,6 +480,12 @@ function App() {
 
   const onKeyDown = (event: KeyboardEvent) => {
     if (event.key === 'Escape') {
+      if (calibration()) {
+        event.preventDefault()
+        event.stopPropagation()
+        cancelCalibration()
+        return
+      }
       const anotherDialogOpen = aboutOpen() || helpOpen() || saveDialogOpen() || loadDialogOpen()
       if (!editOpen() && !anotherDialogOpen) {
         window.queueMicrotask(() => {
@@ -565,12 +591,48 @@ function App() {
         </div>
       </section>
 
-      <KDialog open={editOpen()} onOpenChange={setEditOpen} title="Configure controls" class="config-dialog">
+      <Show when={calibration()}>{(current) => (
+        <section class={`calibration-screen ${current().phase}`} aria-live="polite" aria-label="Calibration in progress">
+          <div class="calibration-grid" aria-hidden="true" />
+          <header class="calibration-screen-header">
+            <span>MC / CR—05</span>
+            <strong>RANGE CAPTURE</strong>
+            <span>{current().phase === 'countdown' ? 'STANDBY' : 'SIGNAL LIVE'}</span>
+          </header>
+          <div class="calibration-readout">
+            <span>{current().phase === 'countdown' ? 'T—MINUS' : 'RECORD'}</span>
+            <strong>{current().phase === 'countdown' ? Math.ceil(current().secondsRemaining) : current().secondsRemaining.toFixed(1)}</strong>
+            <small>{current().phase === 'countdown' ? 'COUNT' : 'SECONDS'}</small>
+          </div>
+          <div class="calibration-directive">
+            <span>FULL RANGE / ALL AXES</span>
+            <h2>{current().phase === 'countdown' ? 'Prepare position.' : 'Move through the complete range.'}</h2>
+            <p>{current().phase === 'countdown' ? 'Capture begins automatically.' : 'Make the smallest and largest movement you want mapped to MIDI.'}</p>
+          </div>
+          <div class="calibration-data">
+            <div><span>MIN</span><strong>{Number.isFinite(current().min) ? current().min.toFixed(3) : '—.—'}</strong></div>
+            <div><span>MAX</span><strong>{Number.isFinite(current().max) ? current().max.toFixed(3) : '—.—'}</strong></div>
+            <div><span>STATE</span><strong>{current().phase === 'countdown' ? 'ARMED' : 'SAMPLING'}</strong></div>
+          </div>
+          <div class="calibration-screen-progress">
+            <i style={{ width: current().phase === 'countdown' ? `${(1 - current().secondsRemaining / 3) * 100}%` : `${(1 - current().secondsRemaining / 5) * 100}%` }} />
+          </div>
+          <button class="calibration-cancel" type="button" onClick={cancelCalibration}>ESC / CANCEL</button>
+        </section>
+      )}</Show>
+
+      <KDialog
+        open={editOpen() && !calibration()}
+        onOpenChange={(open) => {
+          if (!calibration()) setEditOpen(open)
+        }}
+        title="Configure controls"
+        class="config-dialog"
+      >
         <header class="config-header">
           <div>
             <span class="eyebrow">EDIT</span>
             <h2>Control connections</h2>
-            <p>Each connection is repeated for every tracked performer on MIDI channels 1–{config().maxPeople}.</p>
           </div>
           <div class="config-actions">
             <label class="people-control">
@@ -591,18 +653,6 @@ function App() {
           </div>
         </header>
 
-        <Show when={calibration()}>{(current) => (
-          <div class={`calibration-banner ${current().phase}`}>
-            <div class="calibration-orb"><TimerReset size={22} /></div>
-            <div>
-              <strong>{current().phase === 'countdown' ? `Get ready · ${Math.ceil(current().secondsRemaining)}` : 'Move through the full range'}</strong>
-              <span>{current().phase === 'countdown' ? 'Recording begins after the countdown.' : `${current().secondsRemaining.toFixed(1)}s remaining · ${Number.isFinite(current().min) ? `${current().min.toFixed(3)}–${current().max.toFixed(3)}` : 'waiting for landmarks'}`}</span>
-            </div>
-            <div class="calibration-progress"><i style={{ width: current().phase === 'countdown' ? `${(1 - current().secondsRemaining / 3) * 100}%` : `${(1 - current().secondsRemaining / 5) * 100}%` }} /></div>
-            <button type="button" onClick={cancelCalibration}>Cancel</button>
-          </div>
-        )}</Show>
-
         <div class="controls-table-wrap">
           <Show when={config().connections.length} fallback={
             <div class="empty-controls">
@@ -615,32 +665,32 @@ function App() {
             <table class="controls-table">
               <thead><tr><th>Point A</th><th>Point B</th><th>Measure</th><th>CC</th><th>Color</th><th><span class="sr-only">Actions</span></th></tr></thead>
               <tbody>
-                <For each={config().connections}>{(connection) => (
-                  <tr classList={{ disabled: !connection.enabled, invalid: connection.pointA === connection.pointB && connection.pointA !== null }}>
-                    <td><LandmarkCombobox value={connection.pointA} label="Point A" onChange={(pointA) => updateConnection(connection.id, { pointA })} /></td>
-                    <td><LandmarkCombobox value={connection.pointB} label="Point B" onChange={(pointB) => updateConnection(connection.id, { pointB })} /></td>
+                <Index each={config().connections}>{(connection) => (
+                  <tr classList={{ disabled: !connection().enabled, invalid: connection().pointA === connection().pointB && connection().pointA !== null }}>
+                    <td><LandmarkCombobox value={connection().pointA} label="Point A" onChange={(pointA) => updateConnection(connection().id, { pointA })} /></td>
+                    <td><LandmarkCombobox value={connection().pointB} label="Point B" onChange={(pointB) => updateConnection(connection().id, { pointB })} /></td>
                     <td>
-                      <button class="measure-button" type="button" onClick={() => cycleMeasurement(connection)}>
-                        <span>{MEASUREMENT_LABELS[connection.measurement]}</span>
-                        <small>{sampleFor(connection.id)?.rawValue.toFixed(connection.measurement === 'angle' ? 1 : 3) ?? '—'}{connection.measurement === 'angle' ? '°' : ''}</small>
+                      <button class="measure-button" type="button" onClick={() => cycleMeasurement(connection())}>
+                        <span>{MEASUREMENT_LABELS[connection().measurement]}</span>
+                        <small>{sampleFor(connection().id)?.rawValue.toFixed(connection().measurement === 'angle' ? 1 : 3) ?? '—'}{connection().measurement === 'angle' ? '°' : ''}</small>
                       </button>
                     </td>
                     <td>
                       <Popover.Root placement="bottom-end">
-                        <Popover.Trigger class="cc-button">{connection.cc}<small>{connection.midiMin}–{connection.midiMax}</small></Popover.Trigger>
+                        <Popover.Trigger class="cc-button">{connection().cc}<small>{connection().midiMin}–{connection().midiMax}</small></Popover.Trigger>
                         <Popover.Portal>
                           <Popover.Content class="popover-content cc-popover">
                             <Popover.Title>MIDI mapping</Popover.Title>
                             <div class="field-grid">
-                              <NumberField label="CC" value={connection.cc} min={0} max={127} onChange={(cc) => updateConnection(connection.id, { cc: Math.min(127, Math.max(0, Math.round(cc))) })} />
-                              <NumberField label="Min" value={connection.midiMin} min={0} max={127} onChange={(midiMin) => updateConnection(connection.id, { midiMin: Math.min(127, Math.max(0, Math.round(midiMin))) })} />
-                              <NumberField label="Max" value={connection.midiMax} min={0} max={127} onChange={(midiMax) => updateConnection(connection.id, { midiMax: Math.min(127, Math.max(0, Math.round(midiMax))) })} />
+                              <NumberField label="CC" value={connection().cc} min={0} max={127} onChange={(cc) => updateConnection(connection().id, { cc: Math.min(127, Math.max(0, Math.round(cc))) })} />
+                              <NumberField label="Min" value={connection().midiMin} min={0} max={127} onChange={(midiMin) => updateConnection(connection().id, { midiMin: Math.min(127, Math.max(0, Math.round(midiMin))) })} />
+                              <NumberField label="Max" value={connection().midiMax} min={0} max={127} onChange={(midiMax) => updateConnection(connection().id, { midiMax: Math.min(127, Math.max(0, Math.round(midiMax))) })} />
                             </div>
                             <div class="input-range">
-                              <NumberField label="Input min" value={connection.inputMin} step={0.001} onChange={(inputMin) => updateConnection(connection.id, { inputMin, calibrated: true })} />
-                              <NumberField label="Input max" value={connection.inputMax} step={0.001} onChange={(inputMax) => updateConnection(connection.id, { inputMax, calibrated: true })} />
+                              <NumberField label="Input min" value={connection().inputMin} step={0.001} onChange={(inputMin) => updateConnection(connection().id, { inputMin, calibrated: true })} />
+                              <NumberField label="Input max" value={connection().inputMax} step={0.001} onChange={(inputMax) => updateConnection(connection().id, { inputMax, calibrated: true })} />
                             </div>
-                            <button class="calibrate-button" type="button" disabled={!connection.pointA || !connection.pointB} onClick={() => startCalibration(connection.id)}>
+                            <button class="calibrate-button" type="button" disabled={!connection().pointA || !connection().pointB} onClick={() => startCalibration(connection().id)}>
                               <TimerReset size={15} /> Calibrate over 5 seconds
                             </button>
                           </Popover.Content>
@@ -649,8 +699,14 @@ function App() {
                     </td>
                     <td>
                       <Popover.Root placement="bottom-end">
-                        <Popover.Trigger class="color-button" aria-label={connection.color === 'transparent' ? 'Connection hidden' : `Color ${connection.color}`}>
-                          <i classList={{ transparent: connection.color === 'transparent' }} style={{ background: connection.color }} />
+                        <Popover.Trigger class="color-button" aria-label={`Connection color ${COLOR_NAMES[connection().color as keyof typeof COLOR_NAMES] ?? connection().color}`}>
+                          <i
+                            classList={{
+                              transparent: connection().color === 'transparent',
+                              rainbow: connection().color === 'rainbow',
+                            }}
+                            style={{ background: connection().color }}
+                          />
                         </Popover.Trigger>
                         <Popover.Portal>
                           <Popover.Content class="popover-content color-popover">
@@ -660,14 +716,16 @@ function App() {
                                 <button
                                   type="button"
                                   classList={{
-                                    selected: color === connection.color,
+                                    selected: color === connection().color,
                                     transparent: color === 'transparent',
+                                    rainbow: color === 'rainbow',
                                   }}
                                   style={{ background: color }}
-                                  onClick={() => updateConnection(connection.id, { color })}
-                                  aria-label={color === 'transparent' ? "Transparent — don't draw connection" : color}
+                                  onClick={() => updateConnection(connection().id, { color })}
+                                  aria-label={COLOR_NAMES[color]}
+                                  title={COLOR_NAMES[color]}
                                 >
-                                  <Show when={color === connection.color}><Check size={14} /></Show>
+                                  <Show when={color === connection().color}><Check size={14} /></Show>
                                 </button>
                               )}</For>
                             </div>
@@ -680,24 +738,24 @@ function App() {
                         <DropdownMenu.Trigger class="row-menu-button" aria-label="Connection actions"><MoreHorizontal size={18} /></DropdownMenu.Trigger>
                         <DropdownMenu.Portal>
                           <DropdownMenu.Content class="menu-content row-menu-content">
-                            <DropdownMenu.Item class="menu-item" disabled={!connection.pointA || !connection.pointB} onSelect={() => startCalibration(connection.id)}><TimerReset size={15} /> Calibrate</DropdownMenu.Item>
-                            <DropdownMenu.Item class="menu-item" onSelect={() => duplicateConnection(connection)}><Copy size={15} /> Duplicate</DropdownMenu.Item>
-                            <DropdownMenu.Item class="menu-item" onSelect={() => updateConnection(connection.id, { enabled: !connection.enabled })}><Palette size={15} /> {connection.enabled ? 'Disable' : 'Enable'}</DropdownMenu.Item>
-                            <Show when={connection.measurement === 'angle'}>
+                            <DropdownMenu.Item class="menu-item" disabled={!connection().pointA || !connection().pointB} onSelect={() => startCalibration(connection().id)}><TimerReset size={15} /> Calibrate</DropdownMenu.Item>
+                            <DropdownMenu.Item class="menu-item" onSelect={() => duplicateConnection(connection())}><Copy size={15} /> Duplicate</DropdownMenu.Item>
+                            <DropdownMenu.Item class="menu-item" onSelect={() => updateConnection(connection().id, { enabled: !connection().enabled })}><Palette size={15} /> {connection().enabled ? 'Disable' : 'Enable'}</DropdownMenu.Item>
+                            <Show when={connection().measurement === 'angle'}>
                               <DropdownMenu.Separator class="menu-separator" />
-                              <DropdownMenu.RadioGroup value={connection.angleMode} onChange={(angleMode) => updateConnection(connection.id, { angleMode: angleMode as 'continuous' | 'wrapped' })}>
+                              <DropdownMenu.RadioGroup value={connection().angleMode} onChange={(angleMode) => updateConnection(connection().id, { angleMode: angleMode as 'continuous' | 'wrapped' })}>
                                 <DropdownMenu.RadioItem class="menu-item" value="continuous"><span class="radio-dot" /> Continuous angle</DropdownMenu.RadioItem>
                                 <DropdownMenu.RadioItem class="menu-item" value="wrapped"><span class="radio-dot" /> Wrapped angle</DropdownMenu.RadioItem>
                               </DropdownMenu.RadioGroup>
                             </Show>
                             <DropdownMenu.Separator class="menu-separator" />
-                            <DropdownMenu.Item class="menu-item danger" onSelect={() => updateConfig((current) => ({ ...current, connections: current.connections.filter((item) => item.id !== connection.id) }))}><Trash2 size={15} /> Delete</DropdownMenu.Item>
+                            <DropdownMenu.Item class="menu-item danger" onSelect={() => updateConfig((current) => ({ ...current, connections: current.connections.filter((item) => item.id !== connection().id) }))}><Trash2 size={15} /> Delete</DropdownMenu.Item>
                           </DropdownMenu.Content>
                         </DropdownMenu.Portal>
                       </DropdownMenu.Root>
                     </td>
                   </tr>
-                )}</For>
+                )}</Index>
               </tbody>
             </table>
             <button class="add-control-button" type="button" onClick={addConnection}><Plus size={16} /> Add new control</button>
@@ -705,7 +763,11 @@ function App() {
         </div>
         <footer class="config-footer">
           <span><i /> Changes are stored locally</span>
-          <div><button type="button" disabled={!savedConfigs().length} onClick={loadFile}>Load saved</button><button type="button" class="save-button" onClick={saveFile}>Save</button></div>
+          <div>
+            <button type="button" disabled={!savedConfigs().length} onClick={loadFile}>Load</button>
+            <button type="button" onClick={saveFile}>Save</button>
+            <button type="button" class="okay-button" onClick={() => setEditOpen(false)}>Okay</button>
+          </div>
         </footer>
       </KDialog>
 

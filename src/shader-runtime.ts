@@ -34,6 +34,13 @@ export interface ShaderRuntime {
   destroy: () => void
 }
 
+export interface ShaderUniformUsage {
+  pose: boolean
+  face: boolean
+  leftHand: boolean
+  rightHand: boolean
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const value = hex.replace('#', '')
   const parsed = Number.parseInt(value.length === 3 ? value.split('').map((char) => char + char).join('') : value, 16)
@@ -113,6 +120,7 @@ function connectionBlock(
 export function generateShader(config: AppConfig): {
   source: string
   sources: Set<LandmarkSource>
+  uniforms: ShaderUniformUsage
 } {
   const connections = config.connections.flatMap((connection) => {
     if (!connection.enabled || !connection.pointA || !connection.pointB || connection.pointA === connection.pointB) return []
@@ -123,13 +131,22 @@ export function generateShader(config: AppConfig): {
   const sources = pluginSourcesForConnections(
     connections.flatMap(({ connection }) => [connection.pointA, connection.pointB]),
   )
-  const uniforms = [
-    sources.has('pose') ? `uniform int u_poseMap[${config.maxPeople}];` : '',
-    sources.has('face') ? `uniform int u_faceMap[${config.maxPeople}];` : '',
-    sources.has('hand') ? `uniform int u_leftHandMap[${config.maxPeople}];\nuniform int u_rightHandMap[${config.maxPeople}];` : '',
+  const drawnConnections = connections.filter(({ connection }) => connection.color !== 'transparent')
+  const drawnEndpoints = drawnConnections.flatMap(({ pointA, pointB }) => [pointA, pointB])
+  const uniformUsage: ShaderUniformUsage = {
+    pose: drawnEndpoints.some((point) => point.source === 'pose'),
+    face: drawnEndpoints.some((point) => point.source === 'face'),
+    leftHand: drawnEndpoints.some((point) => point.source === 'hand' && point.side === 'left'),
+    rightHand: drawnEndpoints.some((point) => point.source === 'hand' && point.side === 'right'),
+  }
+  const uniformDeclarations = [
+    uniformUsage.pose ? `uniform int u_poseMap[${config.maxPeople}];` : '',
+    uniformUsage.face ? `uniform int u_faceMap[${config.maxPeople}];` : '',
+    uniformUsage.leftHand ? `uniform int u_leftHandMap[${config.maxPeople}];` : '',
+    uniformUsage.rightHand ? `uniform int u_rightHandMap[${config.maxPeople}];` : '',
   ].filter(Boolean).join('\n')
 
-  const blocks = connections.flatMap(({ pointA, pointB, connection }, connectionIndex) => {
+  const blocks = drawnConnections.flatMap(({ pointA, pointB, connection }, connectionIndex) => {
     const bothScreen = pointA.source === 'screen' && pointB.source === 'screen'
     const people = bothScreen ? [0] : Array.from({ length: config.maxPeople }, (_, index) => index)
     return people.map((personIndex) =>
@@ -139,13 +156,14 @@ export function generateShader(config: AppConfig): {
 
   return {
     sources,
+    uniforms: uniformUsage,
     source: `#version 300 es
 precision highp float;
 
 in vec2 v_uv;
 out vec4 outColor;
 uniform sampler2D u_webcam;
-${uniforms}
+${uniformDeclarations}
 
 float falloffEase(float x) {
   float t = clamp(1.0 - x, 0.0, 1.0);
@@ -204,21 +222,19 @@ void main() {
 
 function mapAssignments(
   shader: ShaderPad,
-  sources: Set<LandmarkSource>,
+  uniforms: ShaderUniformUsage,
   assignments: PersonAssignment[],
 ): void {
   const updates: Record<string, number[]> = {}
-  if (sources.has('pose')) updates.u_poseMap = assignments.map((assignment) => assignment.poseIndex)
-  if (sources.has('face')) updates.u_faceMap = assignments.map((assignment) => assignment.faceIndex)
-  if (sources.has('hand')) {
-    updates.u_leftHandMap = assignments.map((assignment) => assignment.leftHandIndex)
-    updates.u_rightHandMap = assignments.map((assignment) => assignment.rightHandIndex)
-  }
+  if (uniforms.pose) updates.u_poseMap = assignments.map((assignment) => assignment.poseIndex)
+  if (uniforms.face) updates.u_faceMap = assignments.map((assignment) => assignment.faceIndex)
+  if (uniforms.leftHand) updates.u_leftHandMap = assignments.map((assignment) => assignment.leftHandIndex)
+  if (uniforms.rightHand) updates.u_rightHandMap = assignments.map((assignment) => assignment.rightHandIndex)
   if (Object.keys(updates).length) shader.updateUniforms(updates)
 }
 
 export function createShaderRuntime(options: ShaderRuntimeOptions): ShaderRuntime {
-  const { source, sources } = generateShader(options.config)
+  const { source, sources, uniforms } = generateShader(options.config)
   const plugins: Plugin[] = [autosize(), helpers()]
   if (sources.has('face')) {
     plugins.push(face({ textureName: 'u_webcam', options: { maxFaces: options.config.maxPeople } }))
@@ -255,12 +271,10 @@ export function createShaderRuntime(options: ShaderRuntimeOptions): ShaderRuntim
   shader.on('hands:result', onHandsResult)
 
   const emptyMap = Array.from({ length: options.config.maxPeople }, () => -1)
-  if (sources.has('pose')) shader.initializeUniform('u_poseMap', 'int', emptyMap, { arrayLength: options.config.maxPeople })
-  if (sources.has('face')) shader.initializeUniform('u_faceMap', 'int', emptyMap, { arrayLength: options.config.maxPeople })
-  if (sources.has('hand')) {
-    shader.initializeUniform('u_leftHandMap', 'int', emptyMap, { arrayLength: options.config.maxPeople })
-    shader.initializeUniform('u_rightHandMap', 'int', emptyMap, { arrayLength: options.config.maxPeople })
-  }
+  if (uniforms.pose) shader.initializeUniform('u_poseMap', 'int', emptyMap, { arrayLength: options.config.maxPeople })
+  if (uniforms.face) shader.initializeUniform('u_faceMap', 'int', emptyMap, { arrayLength: options.config.maxPeople })
+  if (uniforms.leftHand) shader.initializeUniform('u_leftHandMap', 'int', emptyMap, { arrayLength: options.config.maxPeople })
+  if (uniforms.rightHand) shader.initializeUniform('u_rightHandMap', 'int', emptyMap, { arrayLength: options.config.maxPeople })
   shader.initializeTexture('u_webcam', options.video)
   options.onStatus?.(sources.size > 1 || !sources.has('screen') ? 'Loading trackers' : 'Camera ready')
 
@@ -271,7 +285,7 @@ export function createShaderRuntime(options: ShaderRuntimeOptions): ShaderRuntim
     let assignments = tracker.update(snapshots, now)
     const hasVision = sources.has('pose') || sources.has('face') || sources.has('hand')
     if (!hasVision && assignments[0]) assignments[0] = { ...assignments[0], active: true, anchor: { x: 0.5, y: 0.5 } }
-    mapAssignments(shader, sources, assignments)
+    mapAssignments(shader, uniforms, assignments)
 
     const samples: MeasurementSample[] = []
     for (const connection of options.getConfig().connections) {

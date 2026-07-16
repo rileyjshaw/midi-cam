@@ -2,7 +2,7 @@ import * as Combobox from '@kobalte/core/combobox'
 import { Check, ChevronDown, Search } from 'lucide-solid'
 import { createMemo, createSignal } from 'solid-js'
 import { LANDMARK_BY_ID, LANDMARK_GROUPS } from './landmarks'
-import type { LandmarkGroup, LandmarkOption } from './types'
+import type { LandmarkOption } from './types'
 
 interface LandmarkComboboxProps {
   value: string | null
@@ -10,16 +10,42 @@ interface LandmarkComboboxProps {
   onChange: (value: string | null) => void
 }
 
+interface GroupHeader {
+  kind: 'group'
+  id: string
+  label: string
+  detail: string
+  searchText: string
+  group: string
+  count: number
+}
+
+type ComboboxEntry = LandmarkOption | GroupHeader
+
+function isGroupHeader(entry: ComboboxEntry): entry is GroupHeader {
+  return 'kind' in entry && entry.kind === 'group'
+}
+
+const GROUP_BY_OPTION = new Map(
+  LANDMARK_GROUPS.flatMap((group) => group.options.map((option) => [option.id, group.label] as const)),
+)
+
+const COMBOBOX_ENTRIES: ComboboxEntry[] = LANDMARK_GROUPS.flatMap((group) => [
+  {
+    kind: 'group' as const,
+    id: `group:${group.label.toLowerCase()}`,
+    label: group.label,
+    detail: '',
+    searchText: group.label.toLowerCase(),
+    group: group.label,
+    count: group.options.length,
+  },
+  ...group.options,
+])
+
 export function LandmarkCombobox(props: LandmarkComboboxProps) {
   const [collapsed, setCollapsed] = createSignal<Set<string>>(new Set())
-  const [query, setQuery] = createSignal('')
   const selected = createMemo(() => (props.value ? LANDMARK_BY_ID.get(props.value) ?? null : null))
-  const groups = createMemo(() =>
-    LANDMARK_GROUPS.map((group) => ({
-      ...group,
-      options: query().trim() || !collapsed().has(group.label) ? group.options : [],
-    })),
-  )
 
   const toggleGroup = (label: string) => {
     setCollapsed((current) => {
@@ -30,53 +56,82 @@ export function LandmarkCombobox(props: LandmarkComboboxProps) {
     })
   }
 
+  const filterEntry = (entry: ComboboxEntry, inputValue: string) => {
+    const query = inputValue.trim().toLowerCase()
+    if (query) {
+      if (isGroupHeader(entry)) {
+        const group = LANDMARK_GROUPS.find((candidate) => candidate.label === entry.group)
+        return Boolean(group?.options.some((option) => option.searchText.includes(query)))
+      }
+      return entry.searchText.includes(query)
+    }
+
+    if (isGroupHeader(entry)) return true
+    return !collapsed().has(GROUP_BY_OPTION.get(entry.id) ?? '')
+  }
+
   return (
-    <Combobox.Root<LandmarkOption, LandmarkGroup>
+    <Combobox.Root<ComboboxEntry>
       class="landmark-combobox"
-      options={groups()}
+      options={COMBOBOX_ENTRIES}
       optionValue="id"
       optionLabel="label"
       optionTextValue="searchText"
-      optionGroupChildren="options"
+      optionDisabled={isGroupHeader}
       value={selected()}
-      onChange={(option) => props.onChange(option?.id ?? null)}
-      onInputChange={setQuery}
-      defaultFilter="contains"
+      onChange={(entry) => props.onChange(entry && !isGroupHeader(entry) ? entry.id : null)}
+      defaultFilter={filterEntry}
+      triggerMode="focus"
       placeholder="Choose landmark"
       allowsEmptyCollection
-      itemComponent={(itemProps) => (
-        <Combobox.Item item={itemProps.item} class="combobox-item">
-          <span>
-            <Combobox.ItemLabel>{itemProps.item.rawValue.label}</Combobox.ItemLabel>
-            <small>{itemProps.item.rawValue.detail}</small>
-          </span>
-          <Combobox.ItemIndicator class="combobox-check">
-            <Check size={15} />
-          </Combobox.ItemIndicator>
-        </Combobox.Item>
-      )}
-      sectionComponent={(sectionProps) => (
-        <Combobox.Section class="combobox-section">
-          <button
-            type="button"
-            class="combobox-section-button"
-            onPointerDown={(event) => event.preventDefault()}
-            onClick={() => toggleGroup(sectionProps.section.rawValue.label)}
-            aria-expanded={!collapsed().has(sectionProps.section.rawValue.label)}
-          >
-            <ChevronDown
-              size={14}
-              classList={{ collapsed: collapsed().has(sectionProps.section.rawValue.label) }}
-            />
-            {sectionProps.section.rawValue.label}
-            <span>{sectionProps.section.rawValue.options.length}</span>
-          </button>
-        </Combobox.Section>
-      )}
+      itemComponent={(itemProps) => {
+        const entry = itemProps.item.rawValue
+        if (isGroupHeader(entry)) {
+          return (
+            <li class="combobox-section" role="presentation">
+              <button
+                type="button"
+                class="combobox-section-button"
+                onPointerDown={(event) => {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  toggleGroup(entry.group)
+                }}
+                aria-expanded={!collapsed().has(entry.group)}
+              >
+                <ChevronDown
+                  size={14}
+                  classList={{ collapsed: collapsed().has(entry.group) }}
+                />
+                {entry.label}
+                <span>{entry.count}</span>
+              </button>
+            </li>
+          )
+        }
+
+        return (
+          <Combobox.Item item={itemProps.item} class="combobox-item">
+            <span>
+              <Combobox.ItemLabel>{entry.label}</Combobox.ItemLabel>
+              <small>{entry.detail}</small>
+            </span>
+            <Combobox.ItemIndicator class="combobox-check">
+              <Check size={15} />
+            </Combobox.ItemIndicator>
+          </Combobox.Item>
+        )
+      }}
     >
       <Combobox.Control class="combobox-control" aria-label={props.label}>
         <Search size={14} class="combobox-search" />
-        <Combobox.Input class="combobox-input" />
+        <Combobox.Input
+          class="combobox-input"
+          onFocus={(event) => event.currentTarget.select()}
+        />
         <Combobox.Trigger class="combobox-trigger" aria-label={`Open ${props.label}`}>
           <Combobox.Icon>
             <ChevronDown size={15} />

@@ -327,6 +327,11 @@
 
 .color-button { width: 36px; height: 36px; padding: 5px; }
 .color-button > i { width: 100%; height: 100%; border: 1px solid rgba(255, 255, 255, 0.26); border-radius: 50%; box-shadow: 0 0 14px color-mix(in srgb, currentColor 30%, transparent); }
+.color-button > i.transparent {
+  border: 1px dotted rgba(255, 255, 255, 0.94);
+  background: transparent;
+  box-shadow: none;
+}
 .row-menu-button { width: 34px; height: 34px; }
 
 .add-control-button { height: 38px; margin: 8px 1px 0; padding: 0 14px; font-size: 12px; }
@@ -355,6 +360,7 @@
 .config-footer > div { gap: 8px; }
 .config-footer button { min-height: 32px; padding: 0 13px; border: 1px solid var(--border); border-radius: 7px; background: rgba(255, 255, 255, 0.04); font-size: 11px; }
 .config-footer .save-button { border: 0; background: var(--accent); }
+.config-footer button:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .landmark-combobox { width: 100%; }
 .combobox-control {
@@ -430,13 +436,50 @@
 .field-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .input-range { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 .number-field { display: flex; flex-direction: column; gap: 5px; color: var(--muted); font-size: 9px; }
-.number-field input { width: 100%; height: 34px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: rgba(0, 0, 0, 0.24); color: white; font: 12px/1 ui-monospace, monospace; }
+.number-input-wrap { position: relative; }
+.number-field input {
+  width: 100%;
+  height: 34px;
+  padding: 0 26px 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  appearance: textfield;
+  background: rgba(0, 0, 0, 0.24);
+  color: white;
+  font: 12px/1 ui-monospace, monospace;
+}
+.number-field input::-webkit-inner-spin-button,
+.number-field input::-webkit-outer-spin-button { margin: 0; appearance: none; }
+.number-steppers {
+  position: absolute;
+  inset: 2px 2px 2px auto;
+  width: 20px;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+}
+.number-steppers button {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #858c98;
+}
+.number-steppers button:first-child { border-bottom: 1px solid var(--border); }
+.number-steppers button:hover { color: white; background: rgba(255, 255, 255, 0.08); }
 .calibrate-button { width: 100%; min-height: 34px; margin-top: 12px; font-size: 11px; }
 .calibrate-button:disabled { opacity: 0.35; cursor: not-allowed; }
 .color-popover { width: 248px; }
 .color-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
 .color-grid button { position: relative; aspect-ratio: 1; display: grid; place-items: center; padding: 0; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 50%; color: color-mix(in srgb, currentColor 20%, black); }
 .color-grid button.selected { outline: 2px solid white; outline-offset: 2px; }
+.color-grid button.transparent {
+  border: 1px dotted rgba(255, 255, 255, 0.94);
+  background: transparent;
+  color: white;
+}
 
 .menu-content { min-width: 190px; padding: 5px; }
 .menu-item {
@@ -482,7 +525,8 @@
 .calibration-banner.recording .calibration-orb { animation: pulse 1s infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 8px rgba(165, 255, 207, 0.06); } }
 
-.info-dialog {
+.info-dialog,
+.file-dialog {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -494,13 +538,59 @@
   background: rgba(16, 18, 24, 0.96);
   backdrop-filter: blur(22px);
 }
-.info-dialog > svg { color: var(--accent); }
-.info-dialog h2 { margin: 16px 0 8px; font-size: 24px; letter-spacing: -0.04em; }
+.info-dialog > svg,
+.file-dialog > svg { color: var(--accent); }
+.info-dialog h2,
+.file-dialog h2 { margin: 16px 0 8px; font-size: 24px; letter-spacing: -0.04em; }
 .info-dialog p,
+.file-dialog p,
 .info-dialog li { color: var(--muted); font-size: 12px; line-height: 1.7; }
 .info-dialog small { display: block; margin-top: 16px; color: #777e8a; }
 .help-dialog ol { padding-left: 20px; }
 .dialog-close { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; }
+
+.file-dialog { width: min(500px, calc(100vw - 32px)); }
+.save-config-form { display: grid; gap: 7px; margin-top: 20px; }
+.save-config-form label { color: var(--muted); font-size: 10px; }
+.save-config-form input {
+  width: 100%;
+  height: 42px;
+  padding: 0 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+  color: white;
+}
+.file-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.file-dialog-actions button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+}
+.file-dialog-actions .save-button { border: 0; background: var(--accent); }
+.file-dialog-actions button:disabled { opacity: 0.35; cursor: not-allowed; }
+.saved-config-list { display: grid; gap: 7px; max-height: min(400px, 48vh); margin-top: 18px; overflow: auto; }
+.saved-config-item { display: flex; align-items: stretch; border: 1px solid var(--border); border-radius: 9px; background: rgba(255, 255, 255, 0.03); }
+.saved-config-item:hover { border-color: var(--border-strong); background: rgba(255, 255, 255, 0.055); }
+.saved-config-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 11px 12px;
+  border: 0;
+  background: transparent;
+  text-align: left;
+}
+.saved-config-main strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+.saved-config-main span { color: var(--muted); font-size: 9px; }
+.saved-config-delete { width: 42px; border: 0; border-left: 1px solid var(--border); background: transparent; color: var(--muted); }
+.saved-config-delete:hover { color: var(--danger); background: rgba(255, 107, 130, 0.06); }
 
 .toast {
   position: fixed;

@@ -3,6 +3,13 @@ import type { AppConfig, ConnectionConfig } from './types'
 
 const WORKING_KEY = 'midi-cam:working:v1'
 const SAVED_KEY = 'midi-cam:saved:v1'
+const NAMED_CONFIGS_KEY = 'midi-cam:named-configs:v1'
+
+export interface NamedConfig {
+  name: string
+  updatedAt: number
+  config: AppConfig
+}
 
 function isConnection(value: unknown): value is ConnectionConfig {
   if (!value || typeof value !== 'object') return false
@@ -54,6 +61,27 @@ function parseConfig(raw: string | null): AppConfig | null {
   }
 }
 
+function readNamedConfigs(): NamedConfig[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(NAMED_CONFIGS_KEY) ?? '[]') as unknown
+    if (!Array.isArray(value)) return []
+    return value.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object') return []
+      const candidate = entry as Partial<NamedConfig>
+      if (typeof candidate.name !== 'string' || !candidate.name.trim()) return []
+      const config = parseConfig(JSON.stringify(candidate.config))
+      if (!config) return []
+      return [{
+        name: candidate.name.trim(),
+        updatedAt: typeof candidate.updatedAt === 'number' ? candidate.updatedAt : 0,
+        config,
+      }]
+    })
+  } catch {
+    return []
+  }
+}
+
 export function loadWorkingConfig(): AppConfig {
   return parseConfig(localStorage.getItem(WORKING_KEY)) ?? createDefaultConfig()
 }
@@ -62,14 +90,43 @@ export function persistWorkingConfig(config: AppConfig): void {
   localStorage.setItem(WORKING_KEY, JSON.stringify(config))
 }
 
-export function saveConfig(config: AppConfig): void {
-  localStorage.setItem(SAVED_KEY, JSON.stringify(config))
-  persistWorkingConfig(config)
+export function listNamedConfigs(): NamedConfig[] {
+  const named = readNamedConfigs()
+  if (!named.length) {
+    const legacy = parseConfig(localStorage.getItem(SAVED_KEY))
+    if (legacy) named.push({ name: 'Saved configuration', updatedAt: 0, config: legacy })
+  }
+  return named
+    .sort((a, b) => b.updatedAt - a.updatedAt || a.name.localeCompare(b.name))
+    .map((entry) => ({ ...entry, config: cloneConfig(entry.config) }))
 }
 
-export function loadSavedConfig(): AppConfig | null {
-  const saved = parseConfig(localStorage.getItem(SAVED_KEY))
-  return saved ? cloneConfig(saved) : null
+export function saveNamedConfig(name: string, config: AppConfig): void {
+  const normalizedName = name.trim()
+  if (!normalizedName) throw new Error('A configuration name is required.')
+  const entries = listNamedConfigs()
+  const matchingIndex = entries.findIndex(
+    (entry) => entry.name.toLocaleLowerCase() === normalizedName.toLocaleLowerCase(),
+  )
+  const next: NamedConfig = {
+    name: normalizedName,
+    updatedAt: Date.now(),
+    config: cloneConfig(config),
+  }
+  if (matchingIndex >= 0) entries.splice(matchingIndex, 1, next)
+  else entries.push(next)
+  localStorage.setItem(NAMED_CONFIGS_KEY, JSON.stringify(entries))
+}
+
+export function loadNamedConfig(name: string): AppConfig | null {
+  const entry = listNamedConfigs().find((candidate) => candidate.name === name)
+  return entry ? cloneConfig(entry.config) : null
+}
+
+export function deleteNamedConfig(name: string): void {
+  const entries = listNamedConfigs().filter((entry) => entry.name !== name)
+  localStorage.setItem(NAMED_CONFIGS_KEY, JSON.stringify(entries))
+  if (name === 'Saved configuration') localStorage.removeItem(SAVED_KEY)
 }
 
 export function clearWorkingConfig(): AppConfig {

@@ -5,6 +5,7 @@ import {
   Cable,
   Check,
   ChevronDown,
+  ChevronUp,
   CircleHelp,
   Copy,
   FilePlus2,
@@ -26,6 +27,7 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  createUniqueId,
   onCleanup,
 } from 'solid-js'
 import './App.css'
@@ -40,10 +42,13 @@ import {
 import { MidiRouter, midiOutputs } from './midi'
 import {
   clearWorkingConfig,
-  loadSavedConfig,
+  deleteNamedConfig,
+  listNamedConfigs,
+  loadNamedConfig,
   loadWorkingConfig,
   persistWorkingConfig,
-  saveConfig,
+  saveNamedConfig,
+  type NamedConfig,
 } from './persistence'
 import { createShaderRuntime, type ShaderRuntime } from './shader-runtime'
 import type { AppConfig, ConnectionConfig, MeasurementSample } from './types'
@@ -66,21 +71,59 @@ function NumberField(props: {
   step?: number
   onChange: (value: number) => void
 }) {
+  const inputId = createUniqueId()
+  const step = () => props.step ?? 1
+  const nudge = (direction: -1 | 1) => {
+    let next = props.value + step() * direction
+    if (props.min !== undefined) next = Math.max(props.min, next)
+    if (props.max !== undefined) next = Math.min(props.max, next)
+    props.onChange(Number(next.toFixed(8)))
+  }
+
   return (
-    <label class="number-field">
-      <span>{props.label}</span>
-      <input
-        type="number"
-        value={props.value}
-        min={props.min}
-        max={props.max}
-        step={props.step ?? 1}
-        onInput={(event) => {
-          const value = event.currentTarget.valueAsNumber
-          if (Number.isFinite(value)) props.onChange(value)
-        }}
-      />
-    </label>
+    <div class="number-field">
+      <label for={inputId}>{props.label}</label>
+      <div class="number-input-wrap">
+        <input
+          id={inputId}
+          type="number"
+          value={props.value}
+          min={props.min}
+          max={props.max}
+          step={step()}
+          onInput={(event) => {
+            const value = event.currentTarget.valueAsNumber
+            if (Number.isFinite(value)) props.onChange(value)
+          }}
+        />
+        <span class="number-steppers">
+          <button
+            type="button"
+            aria-label={`Increase ${props.label}`}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            onClick={(event) => {
+              event.stopPropagation()
+              nudge(1)
+            }}
+          ><ChevronUp size={10} /></button>
+          <button
+            type="button"
+            aria-label={`Decrease ${props.label}`}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            onClick={(event) => {
+              event.stopPropagation()
+              nudge(-1)
+            }}
+          ><ChevronDown size={10} /></button>
+        </span>
+      </div>
+    </div>
   )
 }
 
@@ -106,11 +149,21 @@ function KDialog(props: {
   )
 }
 
+function savedConfigSummary(entry: NamedConfig): string {
+  const controls = `${entry.config.connections.length} ${entry.config.connections.length === 1 ? 'control' : 'controls'}`
+  if (!entry.updatedAt) return `${controls} · Earlier save`
+  return `${controls} · ${new Date(entry.updatedAt).toLocaleString()}`
+}
+
 function App() {
   const [config, setConfig] = createSignal<AppConfig>(loadWorkingConfig())
   const [editOpen, setEditOpen] = createSignal(config().connections.length === 0)
   const [aboutOpen, setAboutOpen] = createSignal(false)
   const [helpOpen, setHelpOpen] = createSignal(false)
+  const [saveDialogOpen, setSaveDialogOpen] = createSignal(false)
+  const [loadDialogOpen, setLoadDialogOpen] = createSignal(false)
+  const [saveName, setSaveName] = createSignal('')
+  const [savedConfigs, setSavedConfigs] = createSignal<NamedConfig[]>(listNamedConfigs())
   const [cameraStatus, setCameraStatus] = createSignal('Camera off')
   const [cameraError, setCameraError] = createSignal<string | null>(null)
   const [videoReady, setVideoReady] = createSignal(false)
@@ -347,28 +400,62 @@ function App() {
   }
 
   const newFile = () => {
-    if (config().connections.length && !window.confirm('Start a new configuration? Your saved snapshot will remain available.')) return
+    if (config().connections.length && !window.confirm('Start a new configuration? Your named configurations will remain available.')) return
     cancelCalibration()
     setConfig(clearWorkingConfig())
     setEditOpen(true)
     showToast('New configuration')
   }
 
+  const refreshSavedConfigs = () => {
+    const next = listNamedConfigs()
+    setSavedConfigs(next)
+    return next
+  }
+
   const saveFile = () => {
-    saveConfig(config())
-    showToast('Configuration saved locally')
+    setSaveName('')
+    setSaveDialogOpen(true)
+  }
+
+  const submitSave = (event: SubmitEvent) => {
+    event.preventDefault()
+    const name = saveName().trim()
+    if (!name) return
+    saveNamedConfig(name, config())
+    refreshSavedConfigs()
+    setSaveDialogOpen(false)
+    showToast(`Saved “${name}” locally`)
   }
 
   const loadFile = () => {
-    const saved = loadSavedConfig()
-    if (!saved) {
+    const available = refreshSavedConfigs()
+    if (!available.length) {
       showToast('No saved configuration yet')
+      return
+    }
+    setLoadDialogOpen(true)
+  }
+
+  const chooseSavedConfig = (entry: NamedConfig) => {
+    const saved = loadNamedConfig(entry.name)
+    if (!saved) {
+      refreshSavedConfigs()
+      showToast('That saved configuration is no longer available')
       return
     }
     cancelCalibration()
     setConfig(saved)
     setEditOpen(saved.connections.length === 0)
-    showToast('Saved configuration loaded')
+    setLoadDialogOpen(false)
+    showToast(`Loaded “${entry.name}”`)
+  }
+
+  const removeSavedConfig = (entry: NamedConfig) => {
+    deleteNamedConfig(entry.name)
+    const remaining = refreshSavedConfigs()
+    if (!remaining.length) setLoadDialogOpen(false)
+    showToast(`Deleted “${entry.name}”`)
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
@@ -409,7 +496,7 @@ function App() {
                 <DropdownMenu.Item class="menu-item" onSelect={newFile}>
                   <FilePlus2 size={15} /> New <kbd>⌘N</kbd>
                 </DropdownMenu.Item>
-                <DropdownMenu.Item class="menu-item" onSelect={loadFile}>
+                <DropdownMenu.Item class="menu-item" disabled={!savedConfigs().length} onSelect={loadFile}>
                   <FolderOpen size={15} /> Load <kbd>⌘O</kbd>
                 </DropdownMenu.Item>
                 <DropdownMenu.Item class="menu-item" onSelect={saveFile}>
@@ -553,13 +640,24 @@ function App() {
                     </td>
                     <td>
                       <Popover.Root placement="bottom-end">
-                        <Popover.Trigger class="color-button" aria-label={`Color ${connection.color}`}><i style={{ background: connection.color }} /></Popover.Trigger>
+                        <Popover.Trigger class="color-button" aria-label={connection.color === 'transparent' ? 'Connection hidden' : `Color ${connection.color}`}>
+                          <i classList={{ transparent: connection.color === 'transparent' }} style={{ background: connection.color }} />
+                        </Popover.Trigger>
                         <Popover.Portal>
                           <Popover.Content class="popover-content color-popover">
                             <Popover.Title>Connection color</Popover.Title>
                             <div class="color-grid">
                               <For each={[...COLOR_PALETTE]}>{(color) => (
-                                <button type="button" classList={{ selected: color === connection.color }} style={{ background: color }} onClick={() => updateConnection(connection.id, { color })} aria-label={color}>
+                                <button
+                                  type="button"
+                                  classList={{
+                                    selected: color === connection.color,
+                                    transparent: color === 'transparent',
+                                  }}
+                                  style={{ background: color }}
+                                  onClick={() => updateConnection(connection.id, { color })}
+                                  aria-label={color === 'transparent' ? "Transparent — don't draw connection" : color}
+                                >
                                   <Show when={color === connection.color}><Check size={14} /></Show>
                                 </button>
                               )}</For>
@@ -598,8 +696,54 @@ function App() {
         </div>
         <footer class="config-footer">
           <span><i /> Changes are stored locally</span>
-          <div><button type="button" onClick={loadFile}>Load saved</button><button type="button" class="save-button" onClick={saveFile}>Save</button></div>
+          <div><button type="button" disabled={!savedConfigs().length} onClick={loadFile}>Load saved</button><button type="button" class="save-button" onClick={saveFile}>Save</button></div>
         </footer>
+      </KDialog>
+
+      <KDialog open={saveDialogOpen()} onOpenChange={setSaveDialogOpen} title="Save configuration" class="file-dialog">
+        <button class="dialog-close" type="button" onClick={() => setSaveDialogOpen(false)} aria-label="Close save dialog"><X size={18} /></button>
+        <Save size={23} />
+        <h2>Save configuration</h2>
+        <p>Name this snapshot. Your unnamed current configuration will keep auto-saving as you edit.</p>
+        <form class="save-config-form" onSubmit={submitSave}>
+          <label for="save-config-name">Name</label>
+          <input
+            id="save-config-name"
+            type="text"
+            value={saveName()}
+            onInput={(event) => setSaveName(event.currentTarget.value)}
+            placeholder="Performance setup"
+            autocomplete="off"
+            autofocus
+          />
+          <div class="file-dialog-actions">
+            <button type="button" onClick={() => setSaveDialogOpen(false)}>Cancel</button>
+            <button class="save-button" type="submit" disabled={!saveName().trim()}>Save</button>
+          </div>
+        </form>
+      </KDialog>
+
+      <KDialog open={loadDialogOpen()} onOpenChange={setLoadDialogOpen} title="Load configuration" class="file-dialog load-dialog">
+        <button class="dialog-close" type="button" onClick={() => setLoadDialogOpen(false)} aria-label="Close load dialog"><X size={18} /></button>
+        <FolderOpen size={23} />
+        <h2>Load configuration</h2>
+        <p>Choose a named snapshot. Loading it also makes it the auto-saved current configuration.</p>
+        <div class="saved-config-list">
+          <For each={savedConfigs()}>{(entry) => (
+            <div class="saved-config-item">
+              <button class="saved-config-main" type="button" onClick={() => chooseSavedConfig(entry)}>
+                <strong>{entry.name}</strong>
+                <span>{savedConfigSummary(entry)}</span>
+              </button>
+              <button class="saved-config-delete" type="button" onClick={() => removeSavedConfig(entry)} aria-label={`Delete ${entry.name}`}>
+                <Trash2 size={15} />
+              </button>
+            </div>
+          )}</For>
+        </div>
+        <div class="file-dialog-actions">
+          <button type="button" onClick={() => setLoadDialogOpen(false)}>Cancel</button>
+        </div>
       </KDialog>
 
       <KDialog open={aboutOpen()} onOpenChange={setAboutOpen} title="About MIDI Cam" class="info-dialog">

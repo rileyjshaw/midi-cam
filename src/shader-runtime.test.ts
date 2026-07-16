@@ -37,6 +37,36 @@ describe('generated ShaderPad program', () => {
     expect(generated.source).toContain('u_faceMap')
   })
 
+  it('declares only the hand map used by a hand-to-screen connection', () => {
+    const config = createDefaultConfig()
+    const connection = createConnection([])
+    connection.pointA = 'hand:left:0'
+    connection.pointB = 'screen:top-left'
+    config.connections = [connection]
+
+    const generated = generateShader(config)
+    expect(generated.sources.has('hand')).toBe(true)
+    expect(generated.uniforms.leftHand).toBe(true)
+    expect(generated.uniforms.rightHand).toBe(false)
+    expect(generated.source).toContain('uniform int u_leftHandMap[1]')
+    expect(generated.source).not.toContain('u_rightHandMap')
+  })
+
+  it('keeps tracking plugins active without drawing transparent connections', () => {
+    const config = createDefaultConfig()
+    const connection = createConnection([])
+    connection.pointA = 'hand:left:4'
+    connection.pointB = 'screen:center'
+    connection.color = 'transparent'
+    config.connections = [connection]
+
+    const generated = generateShader(config)
+    expect(generated.sources.has('hand')).toBe(true)
+    expect(generated.uniforms.leftHand).toBe(false)
+    expect(generated.source).not.toContain('pointA_0_0')
+    expect(generated.source).not.toContain('u_leftHandMap')
+  })
+
   it('does not rebuild for MIDI-only edits but does rebuild for shader edits', () => {
     const config = createDefaultConfig()
     const connection = createConnection([])

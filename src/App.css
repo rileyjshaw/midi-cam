@@ -65,15 +65,6 @@
 
 .status-button:hover { border-color: var(--border-strong); background: rgba(255, 255, 255, 0.06); }
 
-.channel-readout {
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(165, 255, 207, 0.08);
-  color: var(--accent);
-  font: 700 10px/1 ui-monospace, monospace;
-  letter-spacing: 0.08em;
-}
-
 .live-status {
   display: inline-flex;
   align-items: center;
@@ -326,7 +317,8 @@
 .config-footer .okay-button { border: 0; background: var(--accent); color: #07110c; font-weight: 750; }
 .config-footer button:disabled { opacity: 0.35; cursor: not-allowed; }
 
-.landmark-combobox { width: 100%; }
+.landmark-combobox { width: 100%; outline: 2px solid transparent; outline-offset: 2px; }
+.landmark-combobox:focus-within { outline-color: var(--accent); }
 .combobox-control {
   width: 100%;
   min-height: 42px;
@@ -339,6 +331,7 @@
 .combobox-control:focus-within { border-color: rgba(165, 255, 207, 0.48); background: rgba(0, 0, 0, 0.28); }
 .combobox-search { flex: none; margin-left: 10px; color: var(--dim); }
 .combobox-input { min-width: 0; flex: 1; height: 40px; padding: 0 7px; border: 0; outline: 0; background: transparent; color: white; font-size: 12px; }
+.combobox-input:focus-visible { outline: 0; }
 .combobox-input::placeholder { color: #707784; }
 .combobox-trigger { flex: none; width: 34px; height: 40px; display: grid; place-items: center; border: 0; background: transparent; color: var(--dim); }
 
@@ -520,7 +513,9 @@
   align-items: end;
 }
 .calibration-readout > span { align-self: start; margin-top: 2.3vw; padding: 5px 8px; background: currentColor; color: #050608; font-size: 10px; font-weight: 900; letter-spacing: 0.18em; }
-.calibration-readout > strong { grid-row: span 2; justify-self: end; font: 900 clamp(130px, 23vw, 360px)/0.72 Inter, sans-serif; letter-spacing: -0.09em; font-variant-numeric: tabular-nums; }
+.calibration-readout > strong { grid-row: span 2; justify-self: end; display: flex; align-items: baseline; font: 900 clamp(130px, 23vw, 360px)/0.72 Inter, sans-serif; letter-spacing: -0.09em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "zero" 1; }
+.calibration-time > span { font: inherit; letter-spacing: inherit; }
+.calibration-time .calibration-tenth { margin-left: 0.04em; font: 900 0.32em/1 Inter, sans-serif; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "zero" 1; }
 .calibration-readout > small { align-self: end; padding-bottom: 1vw; font-size: 10px; letter-spacing: 0.24em; }
 .calibration-directive {
   position: absolute;
@@ -694,12 +689,6 @@
 
 .status-button { border-color: rgba(255, 255, 255, 0.38); }
 
-.channel-readout {
-  border: 1px solid rgba(229, 255, 25, 0.32);
-  border-radius: 0;
-  background: rgba(229, 255, 25, 0.08);
-}
-
 .live-status i,
 .config-footer i {
   border-radius: 0;
@@ -743,7 +732,7 @@
 }
 
 .camera-empty::after {
-  content: "INPUT / TRACK / TRANSMIT";
+  content: "MOVE / MEASURE / MODULATE";
   position: absolute;
   right: 3vw;
   bottom: 3vw;
@@ -940,7 +929,6 @@
 
 @media (max-width: 860px) {
   .menu-bar { padding-inline: 9px; }
-  .channel-readout,
   .live-status { display: none; }
   .midi-select-wrap select { width: 96px; }
   .config-dialog { inset: 56px 7px 7px; border-radius: 0; }

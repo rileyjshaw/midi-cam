@@ -107,7 +107,7 @@ function connectionBlock(
         1.0
       );` : ''
   const colorValue = isRainbow
-    ? `hsv2rgb(vec3(fract(u_time * 0.055 + colorPosition_${suffix} * 0.125), 0.78, 1.0))`
+    ? `hsv2rgb(vec3(fract(u_time * 0.055 + colorPosition_${suffix} * 0.125), 0.92, 1.0))`
     : `vec3(${float(r)}, ${float(g)}, ${float(b)})`
   return `
   {
@@ -122,8 +122,8 @@ function connectionBlock(
         v_uv,
         pointA_${suffix},
         pointB_${suffix},
-        40.0,
-        1.25
+        46.0,
+        1.15
       );
       ${colorSetup}
       lineIntensity += glow_${suffix};
@@ -205,7 +205,7 @@ float renderGlowingSegmentExpWidth(
   float pxPerUv = u_resolution.y;
   sharpnessPx *= 0.01;
   float endpointRadiusUv = endpointRadiusPx / pxPerUv;
-  float minThicknessUv = 2.0 / pxPerUv;
+  float minThicknessUv = 3.0 / pxPerUv;
   vec2 segment = p1 - p0;
   float segmentLengthSq = max(dot(segment, segment), 0.0000001);
   float segmentLength = sqrt(segmentLengthSq);
@@ -222,7 +222,7 @@ float renderGlowingSegmentExpWidth(
   float endpointNorm0 = length(uv - p0) / endpointRadiusUv;
   float endpointNorm1 = length(uv - p1) / endpointRadiusUv;
   float dNorm = min(lineNorm, min(endpointNorm0, endpointNorm1));
-  return falloffEase(dNorm * 0.6) + 0.4 * falloffEase(dNorm);
+  return falloffEase(dNorm * 0.54) + 0.5 * falloffEase(dNorm);
 }
 
 void main() {
@@ -231,7 +231,8 @@ void main() {
   vec3 lineColor = vec3(0.0);
   float lineIntensity = 0.0;
   ${blocks}
-  lineColor += lineColor * lineColor * 0.3;
+  lineColor *= 1.25;
+  lineColor += lineColor * lineColor * 0.4;
   lineColor = lineColor / (1.0 + lineColor);
   lineColor = pow(lineColor, vec3(0.4545));
   outColor = vec4(

@@ -79,6 +79,7 @@ describe('generated ShaderPad program', () => {
     const generated = generateShader(config)
     expect(generated.source).toContain('uniform float u_time;')
     expect(generated.source).toContain('colorPosition_0_0 * 0.125')
+    expect(generated.source).toContain('), 0.92, 1.0)')
     expect(generated.source).toContain('hsv2rgb')
   })
 

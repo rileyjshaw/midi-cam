@@ -64,6 +64,23 @@ interface CalibrationState {
   max: number
 }
 
+function CalibrationTime(props: { seconds: number; tenths: boolean }) {
+  const display = createMemo(() => (
+    props.tenths
+      ? Math.max(0, props.seconds).toFixed(1)
+      : String(Math.ceil(Math.max(0, props.seconds)))
+  ))
+  const whole = createMemo(() => display().split('.')[0])
+  const tenth = createMemo(() => display().split('.')[1])
+
+  return (
+    <strong class="calibration-time">
+      <span>{whole()}</span>
+      <Show when={tenth()}>{(digit) => <small class="calibration-tenth">.{digit()}</small>}</Show>
+    </strong>
+  )
+}
+
 function NumberField(props: {
   label: string
   value: number
@@ -536,7 +553,6 @@ function App() {
           <button class="menu-button" type="button" onClick={() => setHelpOpen(true)}>Help</button>
         </div>
         <div class="menu-status" title={midiError() ?? undefined}>
-          <span class="channel-readout">CH 1–{config().maxPeople}</span>
           <Show when={midiAccess()} fallback={
             <button class="status-button" type="button" onClick={connectMidi}><Cable size={14} /> Enable MIDI</button>
           }>
@@ -570,7 +586,7 @@ function App() {
           <div class="camera-empty">
             <div class="camera-glyph"><Video size={28} /></div>
             <h1>Turn movement into MIDI.</h1>
-            <p>Start the camera, define a connection, then move through its range.</p>
+            <p>Generate MIDI CC messages using your body's motion as an instrument</p>
             <button class="primary-button" type="button" onClick={startCamera}><Video size={17} /> Start camera</button>
             <Show when={cameraError()}><small class="error-text">{cameraError()}</small></Show>
           </div>
@@ -587,7 +603,7 @@ function App() {
           </header>
           <div class="calibration-readout">
             <span>{current().phase === 'countdown' ? 'T—MINUS' : 'RECORD'}</span>
-            <strong>{current().phase === 'countdown' ? Math.ceil(current().secondsRemaining) : current().secondsRemaining.toFixed(1)}</strong>
+            <CalibrationTime seconds={current().secondsRemaining} tenths={current().phase === 'recording'} />
             <small>{current().phase === 'countdown' ? 'COUNT' : 'SECONDS'}</small>
           </div>
           <div class="calibration-directive">
@@ -819,7 +835,7 @@ function App() {
         <button class="dialog-close" type="button" onClick={() => setHelpOpen(false)}><X size={18} /></button>
         <CircleHelp size={24} />
         <h2>Quick start</h2>
-        <ol><li>Enable the camera and MIDI output.</li><li>Open Edit and connect two landmarks.</li><li>Choose a measurement and CC.</li><li>Calibrate, then move through the full range.</li></ol>
+        <ol><li>Enable the camera and MIDI output.</li><li>Open Edit and connect two landmarks.</li><li>Choose a measurement type and configure CC settings.</li><li>Calibrate, then move through the full range.</li></ol>
         <p>Continuous angle mode unwraps the vertical seam to prevent sudden min/max jumps. Wrapped mode reports the absolute −90°…90° orientation.</p>
       </KDialog>
 

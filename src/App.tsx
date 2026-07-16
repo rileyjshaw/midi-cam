@@ -629,24 +629,24 @@ function App() {
 		showToast(`Deleted “${entry.name}”`);
 	};
 
+	let openEditOnEscapeRelease = false;
+	const hasOpenEscapeTarget = () =>
+		fileMenuOpen() ||
+		Boolean(calibration()) ||
+		editOpen() ||
+		aboutOpen() ||
+		saveDialogOpen() ||
+		loadDialogOpen() ||
+		Boolean(document.querySelector('[data-expanded]'));
+
 	const onKeyDown = (event: KeyboardEvent) => {
 		if (event.key === 'Escape') {
-			if (fileMenuOpen()) return;
+			openEditOnEscapeRelease = !hasOpenEscapeTarget();
 			if (calibration()) {
 				event.preventDefault();
 				event.stopPropagation();
 				cancelCalibration();
-				return;
 			}
-			const anotherDialogOpen = aboutOpen() || saveDialogOpen() || loadDialogOpen();
-			const popupOpen = document.querySelector('.menu-content, .popover-content, .combobox-content');
-			if (editOpen() || anotherDialogOpen || popupOpen) return;
-			// Wait until this key event finishes so the newly mounted dialog cannot consume it.
-			window.queueMicrotask(() => {
-				const dialogOpened = editOpen() || aboutOpen() || saveDialogOpen() || loadDialogOpen();
-				const popupOpened = document.querySelector('.menu-content, .popover-content, .combobox-content');
-				if (!fileMenuOpen() && !dialogOpened && !popupOpened && !calibration()) setEditOpen(true);
-			});
 			return;
 		}
 		if (!(event.metaKey || event.ctrlKey)) return;
@@ -662,12 +662,20 @@ function App() {
 			newFile();
 		}
 	};
+	const onKeyUp = (event: KeyboardEvent) => {
+		if (event.key !== 'Escape') return;
+		const shouldOpenEdit = openEditOnEscapeRelease;
+		openEditOnEscapeRelease = false;
+		if (shouldOpenEdit && !hasOpenEscapeTarget()) setEditOpen(true);
+	};
 	window.addEventListener('keydown', onKeyDown, true);
+	window.addEventListener('keyup', onKeyUp, true);
 	const handleCameraDeviceChange = () => void refreshCameraDevices();
 	navigator.mediaDevices?.addEventListener?.('devicechange', handleCameraDeviceChange);
 
 	onCleanup(() => {
 		window.removeEventListener('keydown', onKeyDown, true);
+		window.removeEventListener('keyup', onKeyUp, true);
 		navigator.mediaDevices?.removeEventListener?.('devicechange', handleCameraDeviceChange);
 		runtime?.destroy();
 		stream?.getTracks().forEach(track => track.stop());

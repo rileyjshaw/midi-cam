@@ -21,6 +21,10 @@ const chooseMenuItem = (label: string) => {
 	);
 	item?.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, button: 0 }));
 };
+const pressEscape = () => {
+	document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+	document.body.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true }));
+};
 
 function cameraDevice(deviceId: string, label: string): MediaDeviceInfo {
 	return {
@@ -70,7 +74,7 @@ describe('application interface', () => {
 		dispose = render(() => <App />, document.body);
 		expect(document.querySelector('.config-dialog')).toBeNull();
 
-		document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		pressEscape();
 		await settle();
 
 		expect(document.querySelector('.config-dialog')).not.toBeNull();
@@ -110,7 +114,7 @@ describe('application interface', () => {
 		await settle();
 		expect(document.querySelector('.menu-content')).not.toBeNull();
 
-		document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		pressEscape();
 		await settle();
 
 		expect(document.querySelector('.menu-content')).toBeNull();
@@ -210,7 +214,7 @@ describe('application interface', () => {
 		await settle();
 		expect(document.querySelector('.measurement-menu-content')).not.toBeNull();
 
-		document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		pressEscape();
 		await settle();
 
 		expect(document.querySelector('.measurement-menu-content')).toBeNull();

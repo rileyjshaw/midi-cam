@@ -97,19 +97,6 @@ function connectionBlock(
 	const isRainbow = color === 'rainbow';
 	const [r, g, b] = isRainbow ? [0, 0, 0] : hexToRgb(color);
 	const suffix = `${connectionIndex}_${personIndex}`;
-	const colorSetup = isRainbow
-		? `
-      vec2 colorSegment_${suffix} = pointB_${suffix} - pointA_${suffix};
-      float colorPosition_${suffix} = clamp(
-        dot(v_uv - pointA_${suffix}, colorSegment_${suffix}) /
-          max(dot(colorSegment_${suffix}, colorSegment_${suffix}), 0.0000001),
-        0.0,
-        1.0
-      );`
-		: '';
-	const colorValue = isRainbow
-		? `hsv2rgb(vec3(fract(u_time * 0.055 + colorPosition_${suffix} * 0.125), 0.92, 1.0))`
-		: `vec3(${float(r)}, ${float(g)}, ${float(b)})`;
 	return `
   {
     vec2 pointA_${suffix} = vec2(0.0);
@@ -119,16 +106,31 @@ function connectionBlock(
     ${endpointCode(optionA, personIndex, `pointA_${suffix}`, `validA_${suffix}`)}
     ${endpointCode(optionB, personIndex, `pointB_${suffix}`, `validB_${suffix}`)}
     if (validA_${suffix} && validB_${suffix}) {
-      float glow_${suffix} = renderGlowingSegmentExpWidth(
+      vec2 elasticMask_${suffix} = renderGlowingSegmentExpWidth(
         v_uv,
         pointA_${suffix},
         pointB_${suffix},
-        46.0,
+        69.0,
         1.15
       );
-      ${colorSetup}
-      lineIntensity += glow_${suffix};
-      lineColor += glow_${suffix} * ${colorValue};
+      vec2 colorSegment_${suffix} = pointB_${suffix} - pointA_${suffix};
+      float colorPosition_${suffix} = clamp(
+        dot(v_uv - pointA_${suffix}, colorSegment_${suffix}) /
+          max(dot(colorSegment_${suffix}, colorSegment_${suffix}), 0.0000001),
+        0.0,
+        1.0
+      );
+      vec4 elasticGradient_${suffix} = elasticGradient(
+        vec3(${float(r)}, ${float(g)}, ${float(b)}),
+        ${isRainbow ? '1.0' : '0.0'},
+        colorPosition_${suffix}
+      );
+      vec3 haloColor_${suffix} = boostSaturation(elasticGradient_${suffix}.rgb, 1.42);
+      lineIntensity += elasticGradient_${suffix}.a * (
+        elasticMask_${suffix}.x * 0.94 + elasticMask_${suffix}.y * 0.14
+      );
+      lineColor += elasticGradient_${suffix}.rgb * elasticMask_${suffix}.x * 1.28;
+      lineColor += haloColor_${suffix} * elasticMask_${suffix}.y * 0.36;
     }
   }`;
 }
@@ -149,7 +151,6 @@ export function generateShader(config: AppConfig): {
 		connections.flatMap(({ connection }) => [connection.pointA, connection.pointB]),
 	);
 	const drawnConnections = connections.filter(({ connection }) => connection.color !== 'transparent');
-	const usesRainbow = drawnConnections.some(({ connection }) => connection.color === 'rainbow');
 	const drawnEndpoints = drawnConnections.flatMap(({ pointA, pointB }) => [pointA, pointB]);
 	const uniformUsage: ShaderUniformUsage = {
 		pose: drawnEndpoints.some(point => point.source === 'pose'),
@@ -158,7 +159,7 @@ export function generateShader(config: AppConfig): {
 		rightHand: drawnEndpoints.some(point => point.source === 'hand' && point.side === 'right'),
 	};
 	const uniformDeclarations = [
-		usesRainbow ? 'uniform float u_time;' : '',
+		'uniform float u_time;',
 		uniformUsage.pose ? `uniform int u_poseMap[${config.maxPeople}];` : '',
 		uniformUsage.face ? `uniform int u_faceMap[${config.maxPeople}];` : '',
 		uniformUsage.leftHand ? `uniform int u_leftHandMap[${config.maxPeople}];` : '',
@@ -201,7 +202,22 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
 }
 
-float renderGlowingSegmentExpWidth(
+vec3 boostSaturation(vec3 color, float amount) {
+  float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+  return clamp(mix(vec3(luminance), color, amount), 0.0, 1.0);
+}
+
+vec4 elasticGradient(vec3 baseColor, float rainbowMix, float position) {
+  float leadingPosition = 1.0 - position;
+  float endpointPhase = leadingPosition * 0.125;
+  float crtWave = 0.5 + 0.5 * sin(6.283185 * (u_time * 0.34 + endpointPhase));
+  float crtBrightness = mix(0.64, 1.0, crtWave);
+  vec3 solidColor = baseColor * crtBrightness;
+  vec3 rainbowColor = hsv2rgb(vec3(fract(u_time * 0.055 + endpointPhase), 0.94, 1.0));
+  return vec4(mix(solidColor, rainbowColor, rainbowMix), mix(crtBrightness, 1.0, rainbowMix));
+}
+
+vec2 renderGlowingSegmentExpWidth(
   vec2 uv,
   vec2 p0,
   vec2 p1,
@@ -228,7 +244,9 @@ float renderGlowingSegmentExpWidth(
   float endpointNorm0 = length(uv - p0) / endpointRadiusUv;
   float endpointNorm1 = length(uv - p1) / endpointRadiusUv;
   float dNorm = min(lineNorm, min(endpointNorm0, endpointNorm1));
-  return falloffEase(dNorm * 0.54) + 0.5 * falloffEase(dNorm);
+  float core = falloffEase(dNorm * 0.78) + 0.35 * falloffEase(dNorm * 1.35);
+  float halo = max(falloffEase(dNorm * 0.34) - core * 0.42, 0.0);
+  return vec2(core, halo);
 }
 
 void main() {
@@ -241,6 +259,7 @@ void main() {
   lineColor += lineColor * lineColor * 0.4;
   lineColor = lineColor / (1.0 + lineColor);
   lineColor = pow(lineColor, vec3(0.4545));
+  lineColor = boostSaturation(lineColor, 1.12);
   outColor = vec4(
     mix(webcamColor + lineColor, lineColor, clamp(lineIntensity, 0.0, 1.0)),
     1.0

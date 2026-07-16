@@ -33,24 +33,6 @@
 .menu-left { gap: 2px; }
 .menu-status { gap: 8px; }
 
-.wordmark {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-right: 18px;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-}
-
-.wordmark > span {
-  width: 15px;
-  height: 15px;
-  border: 1px solid var(--accent);
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 4px rgba(165, 255, 207, 0.14), 0 0 12px rgba(165, 255, 207, 0.25);
-}
-
 .menu-button,
 .status-button {
   border: 0;
@@ -684,20 +666,6 @@
   -webkit-backdrop-filter: none;
 }
 
-.wordmark {
-  color: white;
-  font: 900 10px/1 ui-monospace, "SFMono-Regular", Menlo, monospace;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-}
-
-.wordmark > span {
-  border: 0;
-  border-radius: 0;
-  background: var(--accent);
-  box-shadow: inset 0 0 0 5px #080a0a;
-}
-
 .menu-button,
 .status-button,
 .primary-button,
@@ -972,7 +940,6 @@
 
 @media (max-width: 860px) {
   .menu-bar { padding-inline: 9px; }
-  .wordmark { margin-right: 6px; }
   .channel-readout,
   .live-status { display: none; }
   .midi-select-wrap select { width: 96px; }
@@ -986,7 +953,6 @@
 }
 
 @media (max-width: 620px) {
-  .wordmark { font-size: 0; margin-right: 2px; }
   .menu-button { padding: 0 6px; font-size: 11px; }
   .status-button { font-size: 0; width: 32px; padding: 0; justify-content: center; }
   .midi-select-wrap { display: none; }

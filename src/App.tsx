@@ -515,7 +515,6 @@ function App() {
     <main class="app-shell">
       <nav class="menu-bar" aria-label="Application menu">
         <div class="menu-left">
-          <div class="wordmark"><span /> MIDI CAM</div>
           <DropdownMenu.Root>
             <DropdownMenu.Trigger class="menu-button">File</DropdownMenu.Trigger>
             <DropdownMenu.Portal>

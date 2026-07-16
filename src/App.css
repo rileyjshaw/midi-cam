@@ -170,7 +170,7 @@
 .add-control-button:hover,
 .save-button:hover { filter: brightness(0.94); }
 
-.dialog-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(2, 3, 5, 0.44); }
+.dialog-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(2, 3, 3, 0.7); }
 .dialog-positioner { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
 
 .dialog-content {
@@ -762,12 +762,6 @@
   border-left: 6px solid var(--accent);
   font-size: 13px;
   line-height: 1.55;
-}
-
-.dialog-overlay {
-  background:
-    repeating-linear-gradient(135deg, transparent 0 24px, rgba(229, 255, 25, 0.025) 24px 25px),
-    rgba(2, 3, 3, 0.7);
 }
 
 .dialog-content {

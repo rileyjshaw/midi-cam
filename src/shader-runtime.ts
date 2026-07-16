@@ -64,7 +64,7 @@ function endpointCode(option: LandmarkOption, personIndex: number, pointName: st
       int ${pointName}Index = u_poseMap[${personIndex}];
       if (${pointName}Index >= 0) {
         vec4 ${pointName}Landmark = poseLandmark(${pointName}Index, ${option.index ?? 0});
-        ${pointName} = vec2(1.0 - ${pointName}Landmark.x, ${pointName}Landmark.y);
+        ${pointName} = landmarkToViewport(${pointName}Landmark.xy);
         ${validName} = ${pointName}Landmark.w >= 0.35;
       }`;
 	}
@@ -73,7 +73,7 @@ function endpointCode(option: LandmarkOption, personIndex: number, pointName: st
       int ${pointName}Index = u_faceMap[${personIndex}];
       if (${pointName}Index >= 0) {
         vec2 ${pointName}Landmark = faceLandmark(${pointName}Index, ${option.index ?? 0}).xy;
-        ${pointName} = vec2(1.0 - ${pointName}Landmark.x, ${pointName}Landmark.y);
+        ${pointName} = landmarkToViewport(${pointName}Landmark);
         ${validName} = true;
       }`;
 	}
@@ -82,7 +82,7 @@ function endpointCode(option: LandmarkOption, personIndex: number, pointName: st
     int ${pointName}Index = ${mapName}[${personIndex}];
     if (${pointName}Index >= 0) {
       vec2 ${pointName}Landmark = handLandmark(${pointName}Index, ${option.index ?? 0}).xy;
-      ${pointName} = vec2(1.0 - ${pointName}Landmark.x, ${pointName}Landmark.y);
+      ${pointName} = landmarkToViewport(${pointName}Landmark);
       ${validName} = true;
     }`;
 }
@@ -213,6 +213,11 @@ vec3 elasticGradient(vec3 baseColor, float rainbowMix, float position) {
   float rainbowHue = fract(u_time * 0.055 + leadingPosition * 0.125);
   vec3 rainbowColor = hsv2rgb(vec3(rainbowHue, 0.94, 1.0));
   return mix(solidColor, rainbowColor, rainbowMix);
+}
+
+vec2 landmarkToViewport(vec2 landmark) {
+  vec2 mirroredLandmark = vec2(1.0 - landmark.x, landmark.y);
+  return fitCoverInverse(mirroredLandmark, vec2(textureSize(u_webcam, 0)));
 }
 
 vec2 renderGlowingSegmentExpWidth(

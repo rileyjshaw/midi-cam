@@ -16,7 +16,9 @@ describe('generated ShaderPad program', () => {
 		expect([...generated.sources]).toEqual(['pose']);
 		expect(generated.source).toContain('poseLandmark(pointA_0_0Index, 11)');
 		expect(generated.source).toContain('poseLandmark(pointB_0_0Index, 12)');
-		expect(generated.source).toContain('vec2(1.0 - pointA_0_0Landmark.x, pointA_0_0Landmark.y)');
+		expect(generated.source).toContain('landmarkToViewport(pointA_0_0Landmark.xy)');
+		expect(generated.source).toContain('vec2 mirroredLandmark = vec2(1.0 - landmark.x, landmark.y);');
+		expect(generated.source).toContain('return fitCoverInverse(mirroredLandmark, vec2(textureSize(u_webcam, 0)));');
 		expect(generated.source).toContain('u_poseMap[1]');
 		expect(generated.source).not.toContain('faceLandmark(');
 		expect(generated.source).not.toContain('handLandmark(');
@@ -36,6 +38,8 @@ describe('generated ShaderPad program', () => {
 		expect(generated.sources.has('pose')).toBe(false);
 		expect(generated.source).toContain('u_rightHandMap');
 		expect(generated.source).toContain('u_faceMap');
+		expect(generated.source).toContain('landmarkToViewport(pointA_0_0Landmark)');
+		expect(generated.source).toContain('landmarkToViewport(pointB_0_0Landmark)');
 	});
 
 	it('declares only the hand map used by a hand-to-screen connection', () => {
@@ -51,6 +55,8 @@ describe('generated ShaderPad program', () => {
 		expect(generated.uniforms.rightHand).toBe(false);
 		expect(generated.source).toContain('uniform int u_leftHandMap[1]');
 		expect(generated.source).not.toContain('u_rightHandMap');
+		expect(generated.source).toContain('pointB_0_0 = vec2(0.0, 1.0); validB_0_0 = true;');
+		expect(generated.source).not.toContain('landmarkToViewport(pointB_0_0');
 	});
 
 	it('keeps tracking plugins active without drawing transparent connections', () => {

@@ -32,6 +32,7 @@ describe('connection color palette', () => {
 		expect(COLOR_PALETTE[10]).toBe('#67E8F9');
 		expect(COLOR_PALETTE[11]).toBe('#F9A8D4');
 		expect(COLOR_PALETTE[12]).toBe('#780C2D');
+		expect(COLOR_PALETTE[15]).toBe('#053824');
 		expect(COLOR_PALETTE[16]).toBe('#A7F3D0');
 	});
 

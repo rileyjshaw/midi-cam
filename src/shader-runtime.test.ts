@@ -89,20 +89,23 @@ describe('generated ShaderPad program', () => {
 		const connection = createConnection([]);
 		connection.pointA = 'pose:11';
 		connection.pointB = 'pose:12';
-		connection.color = '#22D3EE';
+		connection.color = '#67E8F9';
 		config.connections = [connection];
 
 		const generated = generateShader(config);
 		expect(generated.source).toContain('float lightnessPhase = u_time * 0.34 + leadingPosition * 0.25;');
 		expect(generated.source).toContain('float lightness = 0.82 + 0.18 * sin(6.283185 * lightnessPhase);');
 		expect(generated.source).toContain('vec3 elasticColor_0_0 = elasticGradient(');
-		expect(generated.source).toContain('vec3(0.133333, 0.827451, 0.933333),\n        0.0,');
+		expect(generated.source).toContain('vec3(0.403922, 0.909804, 0.976471),\n        0.0,');
 		expect(generated.source).toContain('vec2 elasticMask_0_0 = renderGlowingSegmentExpWidth(');
 		expect(generated.source).toContain('69.0,');
-		expect(generated.source).toContain('boostSaturation(elasticColor_0_0, 1.42)');
-		expect(generated.source).toContain('elasticMask_0_0.y * 0.11');
-		expect(generated.source).toContain('elasticColor_0_0 * elasticMask_0_0.x * 0.90');
+		expect(generated.source).toContain('boostSaturation(elasticColor_0_0, 1.58)');
+		expect(generated.source).toContain('elasticMask_0_0.y * 0.07');
+		expect(generated.source).toContain('elasticColor_0_0 * elasticMask_0_0.x * 0.65');
 		expect(generated.source).not.toContain('lineIntensity += elasticColor_0_0');
+		expect(generated.source).toContain('float linePeak = max(max(lineColor.r, lineColor.g), lineColor.b);');
+		expect(generated.source).toContain('lineColor /= 1.0 + linePeak;');
+		expect(generated.source).not.toContain('lineColor / (1.0 + lineColor)');
 	});
 
 	it('does not rebuild for MIDI-only edits but does rebuild for shader edits', () => {

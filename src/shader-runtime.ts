@@ -125,10 +125,10 @@ function connectionBlock(
         ${isRainbow ? '1.0' : '0.0'},
         colorPosition_${suffix}
       );
-      vec3 haloColor_${suffix} = boostSaturation(elasticColor_${suffix}, 1.42);
-      lineIntensity += elasticMask_${suffix}.x * 0.94 + elasticMask_${suffix}.y * 0.11;
-      lineColor += elasticColor_${suffix} * elasticMask_${suffix}.x * 0.90;
-      lineColor += haloColor_${suffix} * elasticMask_${suffix}.y * 0.36;
+      vec3 haloColor_${suffix} = boostSaturation(elasticColor_${suffix}, 1.58);
+      lineIntensity += elasticMask_${suffix}.x * 0.94 + elasticMask_${suffix}.y * 0.07;
+      lineColor += elasticColor_${suffix} * elasticMask_${suffix}.x * 0.65;
+      lineColor += haloColor_${suffix} * elasticMask_${suffix}.y * 0.22;
     }
   }`;
 }
@@ -253,11 +253,12 @@ void main() {
   vec3 lineColor = vec3(0.0);
   float lineIntensity = 0.0;
   ${blocks}
-  lineColor *= 1.25;
-  lineColor += lineColor * lineColor * 0.4;
-  lineColor = lineColor / (1.0 + lineColor);
-  lineColor = pow(lineColor, vec3(0.4545));
-  lineColor = boostSaturation(lineColor, 1.12);
+  lineColor *= 1.18;
+  lineColor += lineColor * lineColor * 0.25;
+  float linePeak = max(max(lineColor.r, lineColor.g), lineColor.b);
+  lineColor /= 1.0 + linePeak;
+  lineColor = pow(lineColor, vec3(0.52));
+  lineColor = boostSaturation(lineColor, 1.18);
   outColor = vec4(
     mix(webcamColor + lineColor, lineColor, clamp(lineIntensity, 0.0, 1.0)),
     1.0

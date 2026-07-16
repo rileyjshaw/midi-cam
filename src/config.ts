@@ -17,7 +17,7 @@ export const COLOR_PALETTE = [
 	'#780C2D',
 	'#FF7A1A',
 	'#082A66',
-	'#0B5D3B',
+	'#053824',
 	'#A7F3D0',
 	'#8B5CF6',
 ] as const;
@@ -38,7 +38,7 @@ export const COLOR_NAMES: Record<(typeof COLOR_PALETTE)[number], string> = {
 	'#780C2D': 'Burgundy',
 	'#FF7A1A': 'Orange',
 	'#082A66': 'Ocean',
-	'#0B5D3B': 'Forest',
+	'#053824': 'Forest',
 	'#A7F3D0': 'Mint',
 	'#8B5CF6': 'Purple',
 };
@@ -47,6 +47,7 @@ const LEGACY_COLORS: Record<string, string> = {
 	'#22D3EE': '#67E8F9',
 	'#D946EF': '#F9A8D4',
 	'#6EE7B7': '#A7F3D0',
+	'#0B5D3B': '#053824',
 };
 
 export function colorName(color: string): string {

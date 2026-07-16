@@ -205,6 +205,8 @@ function App() {
 	const [savedConfigs, setSavedConfigs] = createSignal<NamedConfig[]>(listNamedConfigs());
 	const [cameraStatus, setCameraStatus] = createSignal('Camera off');
 	const [cameraError, setCameraError] = createSignal<string | null>(null);
+	const [cameraDevices, setCameraDevices] = createSignal<MediaDeviceInfo[]>([]);
+	const [cameraDeviceId, setCameraDeviceId] = createSignal('');
 	const [videoReady, setVideoReady] = createSignal(false);
 	const [engineStatus, setEngineStatus] = createSignal('Waiting for camera');
 	const [midiAccess, setMidiAccess] = createSignal<MIDIAccess | null>(null);
@@ -307,25 +309,72 @@ function App() {
 		midiRouter.setOutput(output);
 	});
 
-	const startCamera = async () => {
-		setCameraError(null);
-		setCameraStatus('Requesting camera');
+	const refreshCameraDevices = async (activeDeviceId = cameraDeviceId()) => {
+		if (!navigator.mediaDevices?.enumerateDevices) return;
 		try {
-			stream?.getTracks().forEach(track => track.stop());
-			stream = await navigator.mediaDevices.getUserMedia({
+			const devices = (await navigator.mediaDevices.enumerateDevices()).filter(
+				device => device.kind === 'videoinput',
+			);
+			setCameraDevices(devices);
+			const selectedDeviceId = devices.some(device => device.deviceId === activeDeviceId)
+				? activeDeviceId
+				: (devices[0]?.deviceId ?? '');
+			setCameraDeviceId(selectedDeviceId);
+		} catch {
+			// Device enumeration is a convenience after permission; the active stream can continue without it.
+		}
+	};
+
+	const startCamera = async (deviceId?: string) => {
+		setCameraError(null);
+		setCameraStatus(deviceId ? 'Switching camera' : 'Requesting camera');
+		const previousStream = stream;
+		let nextStream: MediaStream | null = null;
+		try {
+			nextStream = await navigator.mediaDevices.getUserMedia({
 				audio: false,
-				video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+				video: {
+					width: { ideal: 1280 },
+					height: { ideal: 720 },
+					...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }),
+				},
 			});
-			video.srcObject = stream;
+			video.srcObject = nextStream;
 			video.muted = true;
 			video.playsInline = true;
 			await video.play();
+			stream = nextStream;
+			previousStream?.getTracks().forEach(track => track.stop());
+			const videoTrack = nextStream.getVideoTracks()[0];
+			const activeDeviceId = videoTrack?.getSettings().deviceId ?? deviceId ?? '';
+			setCameraDeviceId(activeDeviceId);
+			await refreshCameraDevices(activeDeviceId);
+			videoTrack?.addEventListener(
+				'ended',
+				() => {
+					if (stream !== nextStream) return;
+					stream = null;
+					setVideoReady(false);
+					setCameraStatus('Camera disconnected');
+					void refreshCameraDevices();
+				},
+				{ once: true },
+			);
 			setCameraStatus('Camera live');
 			setVideoReady(true);
 		} catch (error) {
+			nextStream?.getTracks().forEach(track => track.stop());
+			if (previousStream) {
+				video.srcObject = previousStream;
+				stream = previousStream;
+				setCameraStatus('Camera live');
+				setVideoReady(true);
+			} else {
+				setCameraStatus('Camera unavailable');
+				setVideoReady(false);
+			}
 			const message = error instanceof Error ? error.message : 'Camera permission was not granted.';
 			setCameraError(message);
-			setCameraStatus('Camera unavailable');
 		}
 	};
 
@@ -533,9 +582,12 @@ function App() {
 		}
 	};
 	window.addEventListener('keydown', onKeyDown, true);
+	const handleCameraDeviceChange = () => void refreshCameraDevices();
+	navigator.mediaDevices?.addEventListener?.('devicechange', handleCameraDeviceChange);
 
 	onCleanup(() => {
 		window.removeEventListener('keydown', onKeyDown, true);
+		navigator.mediaDevices?.removeEventListener?.('devicechange', handleCameraDeviceChange);
 		runtime?.destroy();
 		stream?.getTracks().forEach(track => track.stop());
 		if (calibrationTimer) window.clearInterval(calibrationTimer);
@@ -584,7 +636,7 @@ function App() {
 							</button>
 						}
 					>
-						<label class="midi-select-wrap">
+						<label class="device-select-wrap">
 							<Cable size={14} />
 							<select
 								aria-label="MIDI output"
@@ -604,10 +656,34 @@ function App() {
 							<ChevronDown size={13} />
 						</label>
 					</Show>
-					<Show when={!videoReady()}>
-						<button class="status-button" type="button" onClick={startCamera}>
-							<Video size={14} /> Start camera
-						</button>
+					<Show
+						when={videoReady()}
+						fallback={
+							<button class="status-button" type="button" onClick={() => void startCamera()}>
+								<Video size={14} /> Start camera
+							</button>
+						}
+					>
+						<label class="device-select-wrap">
+							<Video size={14} />
+							<select
+								aria-label="Camera"
+								value={cameraDeviceId()}
+								onChange={event => void startCamera(event.currentTarget.value)}
+							>
+								<Show when={!cameraDevices().length}>
+									<option value={cameraDeviceId()}>Active camera</option>
+								</Show>
+								<For each={cameraDevices()}>
+									{(device, index) => (
+										<option value={device.deviceId}>
+											{device.label || `Camera ${index() + 1}`}
+										</option>
+									)}
+								</For>
+							</select>
+							<ChevronDown size={13} />
+						</label>
 					</Show>
 					<span class="live-status">
 						<i classList={{ live: videoReady() }} />
@@ -626,7 +702,7 @@ function App() {
 						</div>
 						<h1>Turn movement into MIDI.</h1>
 						<p>Generate MIDI CC messages using your body's motion</p>
-						<button class="primary-button" type="button" onClick={startCamera}>
+						<button class="primary-button" type="button" onClick={() => void startCamera()}>
 							<Video size={17} /> Start camera
 						</button>
 						<Show when={cameraError()}>

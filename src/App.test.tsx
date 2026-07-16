@@ -12,7 +12,7 @@ vi.mock('./shader-runtime', () => ({
 
 const settle = () => new Promise<void>(resolve => window.setTimeout(resolve, 0));
 
-describe('application keyboard layers', () => {
+describe('application interface', () => {
 	let dispose: (() => void) | undefined;
 
 	beforeEach(() => {
@@ -83,13 +83,29 @@ describe('application keyboard layers', () => {
 
 	it('marks camera and MIDI setup complete once both are active', async () => {
 		const output = { id: 'output-1', name: 'Test output', send: vi.fn() } as unknown as MIDIOutput;
+		const camera = {
+			deviceId: 'camera-1',
+			groupId: 'group-1',
+			kind: 'videoinput',
+			label: 'Built-in camera',
+			toJSON: () => ({}),
+		} as MediaDeviceInfo;
+		const track = {
+			addEventListener: vi.fn(),
+			getSettings: () => ({ deviceId: camera.deviceId }),
+			stop: vi.fn(),
+		} as unknown as MediaStreamTrack;
 		const access = {
 			outputs: new Map([[output.id, output]]),
 			onstatechange: null,
 		} as unknown as MIDIAccess;
 		vi.stubGlobal('navigator', {
 			mediaDevices: {
-				getUserMedia: vi.fn().mockResolvedValue({ getTracks: () => [] }),
+				enumerateDevices: vi.fn().mockResolvedValue([camera]),
+				getUserMedia: vi.fn().mockResolvedValue({
+					getTracks: () => [track],
+					getVideoTracks: () => [track],
+				}),
 			},
 			requestMIDIAccess: vi.fn().mockResolvedValue(access),
 		});
@@ -110,5 +126,67 @@ describe('application keyboard layers', () => {
 		expect(complete?.textContent).toContain('Complete');
 		expect(complete?.querySelector('svg')).not.toBeNull();
 		expect(document.querySelector('.about-quick-start li')?.classList).toContain('complete');
+	});
+
+	it('replaces the camera button with a webcam picker and switches devices', async () => {
+		const cameras = ['Built-in camera', 'Studio camera'].map(
+			(label, index) =>
+				({
+					deviceId: `camera-${index + 1}`,
+					groupId: `group-${index + 1}`,
+					kind: 'videoinput',
+					label,
+					toJSON: () => ({}),
+				}) as MediaDeviceInfo,
+		);
+		const tracks = cameras.map(
+			camera =>
+				({
+					addEventListener: vi.fn(),
+					getSettings: () => ({ deviceId: camera.deviceId }),
+					stop: vi.fn(),
+				}) as unknown as MediaStreamTrack,
+		);
+		const getUserMedia = vi.fn(async (constraints: MediaStreamConstraints) => {
+			const requestedId = (constraints.video as MediaTrackConstraints).deviceId;
+			const exactConstraint =
+				typeof requestedId === 'object' && !Array.isArray(requestedId) ? requestedId.exact : requestedId;
+			const exactId = Array.isArray(exactConstraint) ? exactConstraint[0] : exactConstraint;
+			const index = cameras.findIndex(camera => camera.deviceId === exactId);
+			const track = tracks[index >= 0 ? index : 0];
+			return {
+				getTracks: () => [track],
+				getVideoTracks: () => [track],
+			} as unknown as MediaStream;
+		});
+		vi.stubGlobal('navigator', {
+			mediaDevices: {
+				enumerateDevices: vi.fn().mockResolvedValue(cameras),
+				getUserMedia,
+			},
+		});
+		vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+
+		dispose = render(() => <App />, document.body);
+		const startButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
+			button.textContent?.includes('Start camera'),
+		);
+		startButton?.click();
+		await settle();
+
+		const picker = document.querySelector<HTMLSelectElement>('select[aria-label="Camera"]');
+		expect(picker).not.toBeNull();
+		expect([...picker!.options].map(option => option.textContent)).toEqual(['Built-in camera', 'Studio camera']);
+
+		picker!.value = cameras[1].deviceId;
+		picker!.dispatchEvent(new Event('change', { bubbles: true }));
+		await settle();
+
+		expect(getUserMedia).toHaveBeenCalledTimes(2);
+		expect(getUserMedia.mock.calls[1]?.[0]).toMatchObject({
+			video: { deviceId: { exact: cameras[1].deviceId } },
+		});
+		expect(picker!.value).toBe(cameras[1].deviceId);
+		expect(tracks[0].stop).toHaveBeenCalledOnce();
 	});
 });

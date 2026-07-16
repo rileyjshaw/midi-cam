@@ -189,6 +189,21 @@ interface DeviceSelectOption {
 	label: string;
 }
 
+interface MenuSelectOption {
+	value: string;
+	label: string;
+}
+
+const MEASUREMENT_OPTIONS: readonly MenuSelectOption[] = MEASUREMENT_ORDER.map(measurement => ({
+	value: measurement,
+	label: MEASUREMENT_LABELS[measurement],
+}));
+
+const PERFORMER_OPTIONS: readonly MenuSelectOption[] = [1, 2, 3, 4].map(count => ({
+	value: String(count),
+	label: String(count),
+}));
+
 function DeviceSelect(props: {
 	label: string;
 	value: string;
@@ -213,6 +228,38 @@ function DeviceSelect(props: {
 	);
 }
 
+function MenuSelect(props: {
+	label: string;
+	value: string;
+	options: readonly MenuSelectOption[];
+	class: string;
+	contentClass?: string;
+	children: JSX.Element;
+	onChange: (value: string) => void;
+}) {
+	return (
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger class={props.class} aria-label={props.label}>
+				{props.children}
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Portal>
+				<DropdownMenu.Content class={`menu-content menu-select-content ${props.contentClass ?? ''}`}>
+					<For each={props.options}>
+						{option => (
+							<DropdownMenu.Item class="menu-item" onSelect={() => props.onChange(option.value)}>
+								{option.label}
+								<Show when={option.value === props.value}>
+									<Check class="menu-select-check" size={14} />
+								</Show>
+							</DropdownMenu.Item>
+						)}
+					</For>
+				</DropdownMenu.Content>
+			</DropdownMenu.Portal>
+		</DropdownMenu.Root>
+	);
+}
+
 function swatchStyle(color: string): JSX.CSSProperties {
 	return color === 'transparent' || color === 'rainbow' ? {} : { background: color };
 }
@@ -225,7 +272,7 @@ function savedConfigSummary(entry: NamedConfig): string {
 
 function App() {
 	const [config, setConfig] = createSignal<AppConfig>(loadWorkingConfig());
-	const [editOpen, setEditOpen] = createSignal(config().connections.length === 0);
+	const [editOpen, setEditOpen] = createSignal(false);
 	const [fileMenuOpen, setFileMenuOpen] = createSignal(false);
 	const [aboutOpen, setAboutOpen] = createSignal(false);
 	const [saveDialogOpen, setSaveDialogOpen] = createSignal(false);
@@ -355,6 +402,7 @@ function App() {
 	};
 
 	const startCamera = async (deviceId?: string) => {
+		const leavingIntro = !videoReady();
 		setCameraError(null);
 		setCameraStatus(deviceId ? 'Switching camera' : 'Requesting camera');
 		const previousStream = stream;
@@ -391,6 +439,7 @@ function App() {
 			);
 			setCameraStatus('Camera live');
 			setVideoReady(true);
+			if (leavingIntro && config().connections.length === 0) setEditOpen(true);
 		} catch (error) {
 			nextStream?.getTracks().forEach(track => track.stop());
 			if (previousStream) {
@@ -590,10 +639,14 @@ function App() {
 				return;
 			}
 			const anotherDialogOpen = aboutOpen() || saveDialogOpen() || loadDialogOpen();
-			if (!editOpen() && !anotherDialogOpen) {
-				// Wait until this key event finishes so the newly mounted dialog cannot consume it.
-				window.queueMicrotask(() => setEditOpen(true));
-			}
+			const popupOpen = document.querySelector('.menu-content, .popover-content, .combobox-content');
+			if (editOpen() || anotherDialogOpen || popupOpen) return;
+			// Wait until this key event finishes so the newly mounted dialog cannot consume it.
+			window.queueMicrotask(() => {
+				const dialogOpened = editOpen() || aboutOpen() || saveDialogOpen() || loadDialogOpen();
+				const popupOpened = document.querySelector('.menu-content, .popover-content, .combobox-content');
+				if (!fileMenuOpen() && !dialogOpened && !popupOpened && !calibration()) setEditOpen(true);
+			});
 			return;
 		}
 		if (!(event.metaKey || event.ctrlKey)) return;
@@ -806,20 +859,23 @@ function App() {
 						<h2>Control connections</h2>
 					</div>
 					<div class="config-actions">
-						<label class="people-control">
+						<MenuSelect
+							label="Performers"
+							value={String(config().maxPeople)}
+							options={PERFORMER_OPTIONS}
+							class="people-control"
+							contentClass="performers-menu-content"
+							onChange={value =>
+								updateConfig(current => ({
+									...current,
+									maxPeople: Number(value),
+								}))
+							}
+						>
 							<span>Performers</span>
-							<select
-								value={config().maxPeople}
-								onChange={event =>
-									updateConfig(current => ({
-										...current,
-										maxPeople: Number(event.currentTarget.value),
-									}))
-								}
-							>
-								<For each={[1, 2, 3, 4]}>{count => <option value={count}>{count}</option>}</For>
-							</select>
-						</label>
+							<strong>{config().maxPeople}</strong>
+							<ChevronDown size={13} />
+						</MenuSelect>
 						<button
 							class="icon-button"
 							type="button"
@@ -884,37 +940,30 @@ function App() {
 												/>
 											</td>
 											<td>
-												<div class="measure-select-wrap">
-													<div>
-														<select
-															aria-label="Measurement type"
-															value={connection().measurement}
-															onChange={event => {
-																const measurement = MEASUREMENT_ORDER.find(
-																	candidate =>
-																		candidate === event.currentTarget.value,
-																);
-																if (measurement)
-																	setMeasurement(connection(), measurement);
-															}}
-														>
-															<For each={MEASUREMENT_ORDER}>
-																{measurement => (
-																	<option value={measurement}>
-																		{MEASUREMENT_LABELS[measurement]}
-																	</option>
-																)}
-															</For>
-														</select>
+												<MenuSelect
+													label="Measurement type"
+													value={connection().measurement}
+													options={MEASUREMENT_OPTIONS}
+													class="measure-select-wrap"
+													contentClass="measurement-menu-content"
+													onChange={value => {
+														const measurement = MEASUREMENT_ORDER.find(
+															candidate => candidate === value,
+														);
+														if (measurement) setMeasurement(connection(), measurement);
+													}}
+												>
+													<span class="measure-select-value">
+														<strong>{MEASUREMENT_LABELS[connection().measurement]}</strong>
 														<ChevronDown size={13} />
-													</div>
+													</span>
 													<small>
 														{sampleFor(connection().id)?.rawValue.toFixed(
 															connection().measurement === 'angle' ? 1 : 3,
 														) ?? '—'}
 														{connection().measurement === 'angle' ? '°' : ''}
 													</small>
-												</div>
+												</MenuSelect>
 											</td>
 											<td>
 												<Popover.Root placement="bottom-end">

@@ -13,6 +13,14 @@ vi.mock('./shader-runtime', () => ({
 const settle = () => new Promise<void>(resolve => window.setTimeout(resolve, 0));
 const findButton = (label: string) =>
 	[...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes(label));
+const openMenuFrom = (target: Element) =>
+	target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
+const chooseMenuItem = (label: string) => {
+	const item = [...document.querySelectorAll<HTMLElement>('.menu-select-content .menu-item')].find(
+		candidate => candidate.textContent?.trim() === label,
+	);
+	item?.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, button: 0 }));
+};
 
 function cameraDevice(deviceId: string, label: string): MediaDeviceInfo {
 	return {
@@ -68,6 +76,31 @@ describe('application interface', () => {
 		expect(document.querySelector('.config-dialog')).not.toBeNull();
 	});
 
+	it('waits to open an empty first-time configuration until the camera starts', async () => {
+		const config = createDefaultConfig();
+		config.connections = [];
+		persistWorkingConfig(config);
+		const camera = cameraDevice('camera-1', 'Built-in camera');
+		vi.stubGlobal('navigator', {
+			mediaDevices: {
+				enumerateDevices: vi.fn().mockResolvedValue([camera]),
+				getUserMedia: vi.fn().mockResolvedValue(cameraStream(cameraTrack(camera.deviceId))),
+			},
+		});
+		vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
+
+		dispose = render(() => <App />, document.body);
+		expect(document.querySelector('.camera-empty')).not.toBeNull();
+		expect(document.querySelector('.config-dialog')).toBeNull();
+
+		findButton('Start camera')?.click();
+		await settle();
+		await settle();
+
+		expect(document.querySelector('.camera-empty')).toBeNull();
+		expect(document.querySelector('.config-dialog')).not.toBeNull();
+	});
+
 	it('closes the File menu without opening Edit', async () => {
 		dispose = render(() => <App />, document.body);
 		const fileButton = findButton('File');
@@ -120,28 +153,68 @@ describe('application interface', () => {
 		expect(controls.slice(0, 2)).toEqual(['Start camera', 'Enable MIDI']);
 	});
 
-	it('selects a measurement type from a dropdown and resets its input range', async () => {
+	it('opens the measurement menu from its full trigger and resets the selected input range', async () => {
 		dispose = render(() => <App />, document.body);
 		findButton('Edit')?.click();
 		await settle();
 
-		const select = document.querySelector<HTMLSelectElement>('select[aria-label="Measurement type"]');
-		expect(select).not.toBeNull();
-		expect([...select!.options].map(option => option.textContent)).toEqual([
-			'Distance',
-			'Angle',
-			'Distance X',
-			'Distance Y',
-		]);
+		const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Measurement type"]');
+		expect(trigger).not.toBeNull();
+		expect(document.querySelector('select[aria-label="Measurement type"]')).toBeNull();
+		openMenuFrom(trigger!.querySelector('small')!);
+		await settle();
 
-		select!.value = 'angle';
-		select!.dispatchEvent(new Event('change', { bubbles: true }));
+		expect(
+			[...document.querySelectorAll<HTMLElement>('.measurement-menu-content .menu-item')].map(item =>
+				item.textContent?.trim(),
+			),
+		).toEqual(['Distance', 'Angle', 'Distance X', 'Distance Y']);
+		chooseMenuItem('Angle');
 		await settle();
 
 		const connection = loadWorkingConfig().connections[0];
 		expect(connection.measurement).toBe('angle');
 		expect([connection.inputMin, connection.inputMax]).toEqual([-90, 90]);
-		expect(document.querySelector('.measure-button')).toBeNull();
+		expect(trigger?.textContent).toContain('Angle');
+	});
+
+	it('opens the performers menu from its label and updates the performer count', async () => {
+		dispose = render(() => <App />, document.body);
+		findButton('Edit')?.click();
+		await settle();
+
+		const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Performers"]');
+		expect(trigger).not.toBeNull();
+		expect(document.querySelector('select[aria-label="Performers"]')).toBeNull();
+		openMenuFrom(trigger!.querySelector('span')!);
+		await settle();
+
+		expect(
+			[...document.querySelectorAll<HTMLElement>('.performers-menu-content .menu-item')].map(item =>
+				item.textContent?.trim(),
+			),
+		).toEqual(['1', '2', '3', '4']);
+		chooseMenuItem('3');
+		await settle();
+
+		expect(loadWorkingConfig().maxPeople).toBe(3);
+		expect(trigger?.textContent).toContain('3');
+	});
+
+	it('closes an open dropdown before the edit dialog on Escape', async () => {
+		dispose = render(() => <App />, document.body);
+		findButton('Edit')?.click();
+		await settle();
+		const trigger = document.querySelector<HTMLButtonElement>('button[aria-label="Measurement type"]');
+		openMenuFrom(trigger!);
+		await settle();
+		expect(document.querySelector('.measurement-menu-content')).not.toBeNull();
+
+		document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+		await settle();
+
+		expect(document.querySelector('.measurement-menu-content')).toBeNull();
+		expect(document.querySelector('.config-dialog')).not.toBeNull();
 	});
 
 	it('marks camera and MIDI setup complete once both are active', async () => {

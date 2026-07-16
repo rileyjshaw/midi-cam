@@ -94,6 +94,7 @@ export function LandmarkCombobox(props: LandmarkComboboxProps) {
 			optionTextValue="searchText"
 			optionDisabled={isGroupHeader}
 			value={selected()}
+			disallowEmptySelection
 			onChange={entry => {
 				const option = entry && !isGroupHeader(entry) ? entry : null;
 				props.onChange(option?.id ?? null);

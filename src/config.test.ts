@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { COLOR_NAMES, COLOR_PALETTE, createConnection } from './config';
 
 describe('connection color palette', () => {
-	it('keeps the requested utility and primary colors in the first two rows', () => {
+	it('keeps the requested utility, primary, and deep colors in three rows', () => {
 		expect(COLOR_PALETTE.slice(0, 6)).toEqual([
 			'transparent',
 			'#FFFFFF',
@@ -15,12 +15,21 @@ describe('connection color palette', () => {
 			'Red',
 			'Yellow',
 			'Blue',
-			'Purple',
-			'Orange',
 			'Green',
+			'Cyan',
+			'Magenta',
 		]);
-		expect(COLOR_NAMES['#22D3EE']).toBe('Cyan');
-		expect(COLOR_NAMES['#D946EF']).toBe('Magenta');
+		expect(COLOR_PALETTE.slice(12, 18).map(color => COLOR_NAMES[color])).toEqual([
+			'Burgundy',
+			'Orange',
+			'Ocean',
+			'Forest',
+			'Purple',
+			'Mint',
+		]);
+		expect(COLOR_PALETTE).toHaveLength(18);
+		expect(COLOR_PALETTE[9]).toBe('#1AB65D');
+		expect(COLOR_PALETTE[12]).toBe('#780C2D');
 	});
 
 	it('defaults new controls to a visible color', () => {

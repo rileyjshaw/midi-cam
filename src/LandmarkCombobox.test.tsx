@@ -55,4 +55,42 @@ describe('landmark combobox', () => {
 		expect(currentValue).toBe('pose:11');
 		expect(input.value).toBe('Left shoulder');
 	});
+
+	it('keeps the current value selected and closes when it is chosen again', async () => {
+		const host = document.createElement('div');
+		document.body.append(host);
+		let currentValue = 'face:473';
+
+		function Harness() {
+			const [value, setValue] = createSignal<string | null>(currentValue);
+			return (
+				<LandmarkCombobox
+					value={value()}
+					label="Point A"
+					onChange={next => {
+						currentValue = next ?? '';
+						setValue(next);
+					}}
+				/>
+			);
+		}
+
+		dispose = render(() => <Harness />, host);
+		const input = host.querySelector<HTMLInputElement>('.combobox-input');
+		expect(input).not.toBeNull();
+		await settle();
+
+		input?.focus();
+		await settle();
+		if (!input) return;
+		input.value = 'face:473';
+		input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		await settle();
+
+		expect(currentValue).toBe('face:473');
+		expect(input.value).toBe('Left eye');
+		expect(input.getAttribute('aria-expanded')).toBe('false');
+	});
 });

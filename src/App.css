@@ -401,7 +401,7 @@
 	border-color: rgba(255, 107, 130, 0.42);
 }
 
-.measure-button,
+.measure-select-wrap,
 .cc-button {
 	width: 100%;
 	min-height: 42px;
@@ -417,15 +417,33 @@
 	text-align: left;
 }
 
-.measure-button:hover,
+.measure-select-wrap:hover,
 .cc-button:hover {
 	background: rgba(255, 255, 255, 0.06);
 }
-.measure-button span {
+.measure-select-wrap > div {
+	position: relative;
+	width: 100%;
+}
+.measure-select-wrap select {
+	width: 100%;
+	padding: 0 22px 0 0;
+	border: 0;
+	appearance: none;
+	background: transparent;
+	color: inherit;
+	cursor: pointer;
 	font-size: 12px;
 	font-weight: 650;
 }
-.measure-button small,
+.measure-select-wrap svg {
+	position: absolute;
+	top: 50%;
+	right: 0;
+	transform: translateY(-50%);
+	pointer-events: none;
+}
+.measure-select-wrap small,
 .cc-button small {
 	color: var(--muted);
 	font:
@@ -1314,7 +1332,7 @@
 .dialog-close,
 .row-menu-button,
 .color-button,
-.measure-button,
+.measure-select-wrap,
 .cc-button,
 .combobox-control,
 .number-field input,

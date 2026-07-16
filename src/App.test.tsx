@@ -4,7 +4,7 @@ import { render } from 'solid-js/web';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { createConnection, createDefaultConfig } from './config';
-import { persistWorkingConfig } from './persistence';
+import { loadWorkingConfig, persistWorkingConfig } from './persistence';
 
 vi.mock('./shader-runtime', () => ({
 	createShaderRuntime: vi.fn(() => ({ destroy: vi.fn() })),
@@ -118,6 +118,30 @@ describe('application interface', () => {
 		);
 
 		expect(controls.slice(0, 2)).toEqual(['Start camera', 'Enable MIDI']);
+	});
+
+	it('selects a measurement type from a dropdown and resets its input range', async () => {
+		dispose = render(() => <App />, document.body);
+		findButton('Edit')?.click();
+		await settle();
+
+		const select = document.querySelector<HTMLSelectElement>('select[aria-label="Measurement type"]');
+		expect(select).not.toBeNull();
+		expect([...select!.options].map(option => option.textContent)).toEqual([
+			'Distance',
+			'Angle',
+			'Distance X',
+			'Distance Y',
+		]);
+
+		select!.value = 'angle';
+		select!.dispatchEvent(new Event('change', { bubbles: true }));
+		await settle();
+
+		const connection = loadWorkingConfig().connections[0];
+		expect(connection.measurement).toBe('angle');
+		expect([connection.inputMin, connection.inputMax]).toEqual([-90, 90]);
+		expect(document.querySelector('.measure-button')).toBeNull();
 	});
 
 	it('marks camera and MIDI setup complete once both are active', async () => {

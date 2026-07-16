@@ -450,9 +450,8 @@ function App() {
 		});
 	};
 
-	const cycleMeasurement = (connection: ConnectionConfig) => {
-		const currentIndex = MEASUREMENT_ORDER.indexOf(connection.measurement);
-		const measurement = MEASUREMENT_ORDER[(currentIndex + 1) % MEASUREMENT_ORDER.length];
+	const setMeasurement = (connection: ConnectionConfig, measurement: ConnectionConfig['measurement']) => {
+		if (measurement === connection.measurement) return;
 		const [inputMin, inputMax] = defaultInputRange(measurement);
 		updateConnection(connection.id, {
 			measurement,
@@ -885,19 +884,37 @@ function App() {
 												/>
 											</td>
 											<td>
-												<button
-													class="measure-button"
-													type="button"
-													onClick={() => cycleMeasurement(connection())}
-												>
-													<span>{MEASUREMENT_LABELS[connection().measurement]}</span>
+												<div class="measure-select-wrap">
+													<div>
+														<select
+															aria-label="Measurement type"
+															value={connection().measurement}
+															onChange={event => {
+																const measurement = MEASUREMENT_ORDER.find(
+																	candidate =>
+																		candidate === event.currentTarget.value,
+																);
+																if (measurement)
+																	setMeasurement(connection(), measurement);
+															}}
+														>
+															<For each={MEASUREMENT_ORDER}>
+																{measurement => (
+																	<option value={measurement}>
+																		{MEASUREMENT_LABELS[measurement]}
+																	</option>
+																)}
+															</For>
+														</select>
+														<ChevronDown size={13} />
+													</div>
 													<small>
 														{sampleFor(connection().id)?.rawValue.toFixed(
 															connection().measurement === 'angle' ? 1 : 3,
 														) ?? '—'}
 														{connection().measurement === 'angle' ? '°' : ''}
 													</small>
-												</button>
+												</div>
 											</td>
 											<td>
 												<Popover.Root placement="bottom-end">

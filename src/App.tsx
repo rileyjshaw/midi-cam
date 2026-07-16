@@ -184,6 +184,35 @@ function KDialog(props: {
 	);
 }
 
+interface DeviceSelectOption {
+	value: string;
+	label: string;
+}
+
+function DeviceSelect(props: {
+	label: string;
+	value: string;
+	icon: JSX.Element;
+	options: readonly DeviceSelectOption[];
+	onChange: (value: string) => void;
+}) {
+	return (
+		<label class="device-select-wrap">
+			{props.icon}
+			<select aria-label={props.label} onChange={event => props.onChange(event.currentTarget.value)}>
+				<For each={props.options}>
+					{option => (
+						<option value={option.value} selected={option.value === props.value}>
+							{option.label}
+						</option>
+					)}
+				</For>
+			</select>
+			<ChevronDown size={13} />
+		</label>
+	);
+}
+
 function swatchStyle(color: string): JSX.CSSProperties {
 	return color === 'transparent' || color === 'rainbow' ? {} : { background: color };
 }
@@ -627,35 +656,7 @@ function App() {
 						About
 					</button>
 				</div>
-				<div class="menu-status" title={midiError() ?? undefined}>
-					<Show
-						when={midiAccess()}
-						fallback={
-							<button class="status-button" type="button" onClick={connectMidi}>
-								<Cable size={14} /> Enable MIDI
-							</button>
-						}
-					>
-						<label class="device-select-wrap">
-							<Cable size={14} />
-							<select
-								aria-label="MIDI output"
-								value={config().midiOutputId ?? ''}
-								onChange={event =>
-									updateConfig(current => ({
-										...current,
-										midiOutputId: event.currentTarget.value || null,
-									}))
-								}
-							>
-								<option value="">No MIDI output</option>
-								<For each={outputs()}>
-									{output => <option value={output.id}>{output.name ?? output.id}</option>}
-								</For>
-							</select>
-							<ChevronDown size={13} />
-						</label>
-					</Show>
+				<div class="menu-status" title={cameraError() ?? midiError() ?? undefined}>
 					<Show
 						when={videoReady()}
 						fallback={
@@ -664,26 +665,41 @@ function App() {
 							</button>
 						}
 					>
-						<label class="device-select-wrap">
-							<Video size={14} />
-							<select
-								aria-label="Camera"
-								value={cameraDeviceId()}
-								onChange={event => void startCamera(event.currentTarget.value)}
-							>
-								<Show when={!cameraDevices().length}>
-									<option value={cameraDeviceId()}>Active camera</option>
-								</Show>
-								<For each={cameraDevices()}>
-									{(device, index) => (
-										<option value={device.deviceId}>
-											{device.label || `Camera ${index() + 1}`}
-										</option>
-									)}
-								</For>
-							</select>
-							<ChevronDown size={13} />
-						</label>
+						<DeviceSelect
+							label="Camera"
+							value={cameraDeviceId()}
+							icon={<Video size={14} />}
+							options={
+								cameraDevices().length
+									? cameraDevices().map((device, index) => ({
+											value: device.deviceId,
+											label: device.label || `Camera ${index + 1}`,
+										}))
+									: [{ value: cameraDeviceId(), label: 'Active camera' }]
+							}
+							onChange={deviceId => void startCamera(deviceId)}
+						/>
+					</Show>
+					<Show
+						when={midiAccess()}
+						fallback={
+							<button class="status-button" type="button" onClick={connectMidi}>
+								<Cable size={14} /> Enable MIDI
+							</button>
+						}
+					>
+						<DeviceSelect
+							label="MIDI output"
+							value={config().midiOutputId ?? ''}
+							icon={<Cable size={14} />}
+							options={[
+								{ value: '', label: 'No MIDI output' },
+								...outputs().map(output => ({ value: output.id, label: output.name ?? output.id })),
+							]}
+							onChange={midiOutputId =>
+								updateConfig(current => ({ ...current, midiOutputId: midiOutputId || null }))
+							}
+						/>
 					</Show>
 					<span class="live-status">
 						<i classList={{ live: videoReady() }} />
@@ -1197,7 +1213,6 @@ function App() {
 					</a>
 					. Each tracked performer is routed to their own ascending MIDI channel.
 				</p>
-				<small>Camera frames and landmark data stay in your browser.</small>
 				<section class="about-quick-start">
 					<h3>Quick start</h3>
 					<ol>
@@ -1214,12 +1229,15 @@ function App() {
 						<li>Calibrate, then move through the full range.</li>
 					</ol>
 				</section>
-				<p class="about-credit">
-					Built by{' '}
-					<a href="https://misery.co" target="_blank" rel="noopener noreferrer">
-						Misery &amp; Company
-					</a>
-				</p>
+				<footer class="about-footer">
+					<p>Camera frames and landmark data stay in your browser.</p>
+					<p class="about-credit">
+						Built by{' '}
+						<a href="https://misery.co" target="_blank" rel="noopener noreferrer">
+							Misery &amp; Company
+						</a>
+					</p>
+				</footer>
 			</KDialog>
 
 			<Show when={toast()}>

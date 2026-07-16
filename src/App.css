@@ -1069,11 +1069,6 @@
 .info-dialog a:hover {
 	text-decoration-color: var(--accent);
 }
-.info-dialog small {
-	display: block;
-	margin-top: 16px;
-	color: #777e8a;
-}
 .about-quick-start {
 	margin-top: 22px;
 	padding-top: 18px;
@@ -1107,11 +1102,18 @@
 	font-variant-numeric: tabular-nums;
 	letter-spacing: 0.08em;
 	text-transform: uppercase;
+	vertical-align: middle;
 }
-.about-credit {
+.about-footer {
 	margin: 20px 0 0;
 	padding-top: 16px;
 	border-top: 1px solid var(--border-strong);
+}
+.about-footer p {
+	margin: 0;
+}
+.about-footer .about-credit {
+	margin-top: 2px;
 }
 .dialog-close {
 	position: absolute;

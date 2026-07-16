@@ -11,6 +11,33 @@ vi.mock('./shader-runtime', () => ({
 }));
 
 const settle = () => new Promise<void>(resolve => window.setTimeout(resolve, 0));
+const findButton = (label: string) =>
+	[...document.querySelectorAll<HTMLButtonElement>('button')].find(button => button.textContent?.includes(label));
+
+function cameraDevice(deviceId: string, label: string): MediaDeviceInfo {
+	return {
+		deviceId,
+		groupId: `group-${deviceId}`,
+		kind: 'videoinput',
+		label,
+		toJSON: () => ({}),
+	} as MediaDeviceInfo;
+}
+
+function cameraTrack(deviceId: string): MediaStreamTrack {
+	return {
+		addEventListener: vi.fn(),
+		getSettings: () => ({ deviceId }),
+		stop: vi.fn(),
+	} as unknown as MediaStreamTrack;
+}
+
+function cameraStream(track: MediaStreamTrack): MediaStream {
+	return {
+		getTracks: () => [track],
+		getVideoTracks: () => [track],
+	} as unknown as MediaStream;
+}
 
 describe('application interface', () => {
 	let dispose: (() => void) | undefined;
@@ -43,9 +70,7 @@ describe('application interface', () => {
 
 	it('closes the File menu without opening Edit', async () => {
 		dispose = render(() => <App />, document.body);
-		const fileButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(
-			button => button.textContent === 'File',
-		);
+		const fileButton = findButton('File');
 		expect(fileButton).toBeDefined();
 
 		fileButton?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
@@ -62,7 +87,7 @@ describe('application interface', () => {
 	it('combines quick start and credits in the About dialog', async () => {
 		dispose = render(() => <App />, document.body);
 		const buttons = [...document.querySelectorAll<HTMLButtonElement>('button')];
-		const aboutButton = buttons.find(button => button.textContent === 'About');
+		const aboutButton = findButton('About');
 
 		expect(aboutButton).toBeDefined();
 		expect(buttons.some(button => button.textContent === 'Help')).toBe(false);
@@ -74,6 +99,11 @@ describe('application interface', () => {
 		expect(dialog?.textContent).toContain('Quick start');
 		expect(dialog?.textContent).toContain('Enable the camera and MIDI output.');
 		expect(dialog?.querySelector('.setup-complete')).toBeNull();
+		const footerLines = [...(dialog?.querySelectorAll<HTMLParagraphElement>('.about-footer p') ?? [])];
+		expect(footerLines.map(line => line.textContent?.trim())).toEqual([
+			'Camera frames and landmark data stay in your browser.',
+			'Built by Misery & Company',
+		]);
 
 		const credit = dialog?.querySelector<HTMLAnchorElement>('.about-credit a');
 		expect(credit?.textContent).toBe('Misery & Company');
@@ -81,20 +111,19 @@ describe('application interface', () => {
 		expect(credit?.target).toBe('_blank');
 	});
 
+	it('places camera controls before MIDI controls', () => {
+		dispose = render(() => <App />, document.body);
+		const controls = [...document.querySelectorAll<HTMLElement>('.menu-status > *')].map(item =>
+			item.textContent?.trim(),
+		);
+
+		expect(controls.slice(0, 2)).toEqual(['Start camera', 'Enable MIDI']);
+	});
+
 	it('marks camera and MIDI setup complete once both are active', async () => {
 		const output = { id: 'output-1', name: 'Test output', send: vi.fn() } as unknown as MIDIOutput;
-		const camera = {
-			deviceId: 'camera-1',
-			groupId: 'group-1',
-			kind: 'videoinput',
-			label: 'Built-in camera',
-			toJSON: () => ({}),
-		} as MediaDeviceInfo;
-		const track = {
-			addEventListener: vi.fn(),
-			getSettings: () => ({ deviceId: camera.deviceId }),
-			stop: vi.fn(),
-		} as unknown as MediaStreamTrack;
+		const camera = cameraDevice('camera-1', 'Built-in camera');
+		const track = cameraTrack(camera.deviceId);
 		const access = {
 			outputs: new Map([[output.id, output]]),
 			onstatechange: null,
@@ -102,24 +131,18 @@ describe('application interface', () => {
 		vi.stubGlobal('navigator', {
 			mediaDevices: {
 				enumerateDevices: vi.fn().mockResolvedValue([camera]),
-				getUserMedia: vi.fn().mockResolvedValue({
-					getTracks: () => [track],
-					getVideoTracks: () => [track],
-				}),
+				getUserMedia: vi.fn().mockResolvedValue(cameraStream(track)),
 			},
 			requestMIDIAccess: vi.fn().mockResolvedValue(access),
 		});
 		vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 
 		dispose = render(() => <App />, document.body);
-		const button = (label: string) =>
-			[...document.querySelectorAll<HTMLButtonElement>('button')].find(item => item.textContent?.includes(label));
-
-		button('Enable MIDI')?.click();
+		findButton('Enable MIDI')?.click();
 		await settle();
-		button('Start camera')?.click();
+		findButton('Start camera')?.click();
 		await settle();
-		button('About')?.click();
+		findButton('About')?.click();
 		await settle();
 
 		const complete = document.querySelector('.setup-complete');
@@ -129,24 +152,8 @@ describe('application interface', () => {
 	});
 
 	it('replaces the camera button with a webcam picker and switches devices', async () => {
-		const cameras = ['Built-in camera', 'Studio camera'].map(
-			(label, index) =>
-				({
-					deviceId: `camera-${index + 1}`,
-					groupId: `group-${index + 1}`,
-					kind: 'videoinput',
-					label,
-					toJSON: () => ({}),
-				}) as MediaDeviceInfo,
-		);
-		const tracks = cameras.map(
-			camera =>
-				({
-					addEventListener: vi.fn(),
-					getSettings: () => ({ deviceId: camera.deviceId }),
-					stop: vi.fn(),
-				}) as unknown as MediaStreamTrack,
-		);
+		const cameras = [cameraDevice('camera-1', 'Built-in camera'), cameraDevice('camera-2', 'Studio camera')];
+		const tracks = cameras.map(camera => cameraTrack(camera.deviceId));
 		const getUserMedia = vi.fn(async (constraints: MediaStreamConstraints) => {
 			const requestedId = (constraints.video as MediaTrackConstraints).deviceId;
 			const exactConstraint =
@@ -154,10 +161,7 @@ describe('application interface', () => {
 			const exactId = Array.isArray(exactConstraint) ? exactConstraint[0] : exactConstraint;
 			const index = cameras.findIndex(camera => camera.deviceId === exactId);
 			const track = tracks[index >= 0 ? index : 0];
-			return {
-				getTracks: () => [track],
-				getVideoTracks: () => [track],
-			} as unknown as MediaStream;
+			return cameraStream(track);
 		});
 		vi.stubGlobal('navigator', {
 			mediaDevices: {
@@ -168,10 +172,7 @@ describe('application interface', () => {
 		vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 
 		dispose = render(() => <App />, document.body);
-		const startButton = [...document.querySelectorAll<HTMLButtonElement>('button')].find(button =>
-			button.textContent?.includes('Start camera'),
-		);
-		startButton?.click();
+		findButton('Start camera')?.click();
 		await settle();
 
 		const picker = document.querySelector<HTMLSelectElement>('select[aria-label="Camera"]');
@@ -186,7 +187,8 @@ describe('application interface', () => {
 		expect(getUserMedia.mock.calls[1]?.[0]).toMatchObject({
 			video: { deviceId: { exact: cameras[1].deviceId } },
 		});
-		expect(picker!.value).toBe(cameras[1].deviceId);
+		const updatedPicker = document.querySelector<HTMLSelectElement>('select[aria-label="Camera"]');
+		expect(updatedPicker?.value).toBe(cameras[1].deviceId);
 		expect(tracks[0].stop).toHaveBeenCalledOnce();
 	});
 });

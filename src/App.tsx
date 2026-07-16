@@ -366,7 +366,6 @@ function App() {
       inputMin,
       inputMax,
       calibrated: false,
-      angleMode: measurement === 'angle' ? connection.angleMode : 'continuous',
     })
   }
 
@@ -743,13 +742,6 @@ function App() {
                             <DropdownMenu.Item class="menu-item" disabled={!connection().pointA || !connection().pointB} onSelect={() => startCalibration(connection().id)}><TimerReset size={15} /> Calibrate</DropdownMenu.Item>
                             <DropdownMenu.Item class="menu-item" onSelect={() => duplicateConnection(connection())}><Copy size={15} /> Duplicate</DropdownMenu.Item>
                             <DropdownMenu.Item class="menu-item" onSelect={() => updateConnection(connection().id, { enabled: !connection().enabled })}><Palette size={15} /> {connection().enabled ? 'Disable' : 'Enable'}</DropdownMenu.Item>
-                            <Show when={connection().measurement === 'angle'}>
-                              <DropdownMenu.Separator class="menu-separator" />
-                              <DropdownMenu.RadioGroup value={connection().angleMode} onChange={(angleMode) => updateConnection(connection().id, { angleMode: angleMode as 'continuous' | 'wrapped' })}>
-                                <DropdownMenu.RadioItem class="menu-item" value="continuous"><span class="radio-dot" /> Continuous angle</DropdownMenu.RadioItem>
-                                <DropdownMenu.RadioItem class="menu-item" value="wrapped"><span class="radio-dot" /> Wrapped angle</DropdownMenu.RadioItem>
-                              </DropdownMenu.RadioGroup>
-                            </Show>
                             <DropdownMenu.Separator class="menu-separator" />
                             <DropdownMenu.Item class="menu-item danger" onSelect={() => updateConfig((current) => ({ ...current, connections: current.connections.filter((item) => item.id !== connection().id) }))}><Trash2 size={15} /> Delete</DropdownMenu.Item>
                           </DropdownMenu.Content>
@@ -836,7 +828,6 @@ function App() {
         <CircleHelp size={24} />
         <h2>Quick start</h2>
         <ol><li>Enable the camera and MIDI output.</li><li>Open Edit and connect two landmarks.</li><li>Choose a measurement type and configure CC settings.</li><li>Calibrate, then move through the full range.</li></ol>
-        <p>Continuous angle mode unwraps the vertical seam to prevent sudden min/max jumps. Wrapped mode reports the absolute −90°…90° orientation.</p>
       </KDialog>
 
       <Show when={toast()}><div class="toast">{toast()}</div></Show>

@@ -29,15 +29,11 @@ describe('measurement math', () => {
     expect(unwrapped).toEqual([80, 89, 91, 100])
   })
 
-  it('supports wrapped angle mode explicitly', () => {
-    const value = measurePoints(
-      { x: 0, y: 0 },
-      { x: -0.01, y: 1 },
-      'angle',
-      'wrapped',
-      89,
-    )?.value
-    expect(value).toBeGreaterThan(89)
+  it('always carries angles continuously across the vertical seam', () => {
+    const before = measurePoints({ x: 0, y: 0 }, { x: 0.01, y: -1 }, 'angle')?.value
+    const after = measurePoints({ x: 0, y: 0 }, { x: -0.01, y: -1 }, 'angle', before)?.value
+    expect(before).toBeCloseTo(89.43, 1)
+    expect(after).toBeCloseTo(90.57, 1)
   })
 })
 

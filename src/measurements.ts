@@ -1,4 +1,4 @@
-import type { AngleMode, MeasurementType, Point2D } from './types'
+import type { MeasurementType, Point2D } from './types'
 
 export interface MeasurementResult {
   value: number
@@ -18,7 +18,6 @@ export function measurePoints(
   a: Point2D,
   b: Point2D,
   type: MeasurementType,
-  angleMode: AngleMode = 'continuous',
   previousAngle?: number,
 ): MeasurementResult | null {
   const dx = b.x - a.x
@@ -30,7 +29,7 @@ export function measurePoints(
   if (Math.abs(dx) + Math.abs(dy) < 1e-7) return null
 
   const wrapped = wrapUndirectedAngle((-Math.atan2(dy, dx) * 180) / Math.PI)
-  const value = angleMode === 'continuous' ? unwrapAngle(wrapped, previousAngle) : wrapped
+  const value = unwrapAngle(wrapped, previousAngle)
   return { value, angleState: value }
 }
 

@@ -3,7 +3,6 @@ import type { NormalizedLandmark } from '@mediapipe/tasks-vision'
 export type LandmarkSource = 'hand' | 'face' | 'pose' | 'screen'
 export type HandSide = 'left' | 'right'
 export type MeasurementType = 'distance' | 'angle' | 'distanceX' | 'distanceY'
-export type AngleMode = 'continuous' | 'wrapped'
 
 export interface Point2D {
   x: number
@@ -37,7 +36,6 @@ export interface ConnectionConfig {
   inputMin: number
   inputMax: number
   calibrated: boolean
-  angleMode: AngleMode
   color: string
   enabled: boolean
 }

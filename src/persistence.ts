@@ -48,12 +48,18 @@ function parseConfig(raw: string | null): AppConfig | null {
       maxPeople: Math.round(value.maxPeople),
       midiOutputId: typeof value.midiOutputId === 'string' ? value.midiOutputId : null,
       connections: value.connections.map((connection) => ({
-        ...connection,
+        id: connection.id,
+        pointA: connection.pointA,
+        pointB: connection.pointB,
+        measurement: connection.measurement,
         cc: Math.min(127, Math.max(0, Math.round(connection.cc))),
         midiMin: Math.min(127, Math.max(0, Math.round(connection.midiMin))),
         midiMax: Math.min(127, Math.max(0, Math.round(connection.midiMax))),
+        inputMin: connection.inputMin,
+        inputMax: connection.inputMax,
         calibrated: connection.calibrated === true,
-        angleMode: connection.angleMode === 'wrapped' ? 'wrapped' : 'continuous',
+        color: connection.color,
+        enabled: connection.enabled,
       })),
     }
   } catch {

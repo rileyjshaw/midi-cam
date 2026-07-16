@@ -25,6 +25,16 @@ describe('local configuration persistence', () => {
     expect(loadWorkingConfig().maxPeople).toBe(3)
   })
 
+  it('drops the legacy wrapped-angle option from stored configurations', () => {
+    const legacyConnection = { ...createConnection([]), angleMode: 'wrapped' }
+    localStorage.setItem('midi-cam:working:v1', JSON.stringify({
+      ...createDefaultConfig(),
+      connections: [legacyConnection],
+    }))
+
+    expect(loadWorkingConfig().connections[0]).not.toHaveProperty('angleMode')
+  })
+
   it('stores, replaces, loads, and deletes named configurations', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-07-15T20:00:00Z'))

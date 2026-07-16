@@ -56,7 +56,6 @@ export function createConnection(
     inputMin,
     inputMax,
     calibrated: false,
-    angleMode: 'continuous',
     color: DEFAULT_CONNECTION_COLORS[existing.length % DEFAULT_CONNECTION_COLORS.length],
     enabled: true,
   }

@@ -335,7 +335,6 @@ export function createShaderRuntime(options: ShaderRuntimeOptions): ShaderRuntim
           pointA,
           pointB,
           connection.measurement,
-          connection.angleMode,
           angleStates.get(angleKey),
         )
         if (!measured) continue

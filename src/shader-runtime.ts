@@ -126,8 +126,8 @@ function connectionBlock(
         colorPosition_${suffix}
       );
       vec3 haloColor_${suffix} = boostSaturation(elasticColor_${suffix}, 1.42);
-      lineIntensity += elasticMask_${suffix}.x * 0.94 + elasticMask_${suffix}.y * 0.14;
-      lineColor += elasticColor_${suffix} * elasticMask_${suffix}.x * 1.28;
+      lineIntensity += elasticMask_${suffix}.x * 0.94 + elasticMask_${suffix}.y * 0.11;
+      lineColor += elasticColor_${suffix} * elasticMask_${suffix}.x * 0.90;
       lineColor += haloColor_${suffix} * elasticMask_${suffix}.y * 0.36;
     }
   }`;

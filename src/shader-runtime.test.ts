@@ -100,7 +100,8 @@ describe('generated ShaderPad program', () => {
 		expect(generated.source).toContain('vec2 elasticMask_0_0 = renderGlowingSegmentExpWidth(');
 		expect(generated.source).toContain('69.0,');
 		expect(generated.source).toContain('boostSaturation(elasticColor_0_0, 1.42)');
-		expect(generated.source).toContain('elasticMask_0_0.y * 0.14');
+		expect(generated.source).toContain('elasticMask_0_0.y * 0.11');
+		expect(generated.source).toContain('elasticColor_0_0 * elasticMask_0_0.x * 0.90');
 		expect(generated.source).not.toContain('lineIntensity += elasticColor_0_0');
 	});
 

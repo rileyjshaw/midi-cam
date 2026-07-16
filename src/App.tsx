@@ -198,6 +198,7 @@ function savedConfigSummary(entry: NamedConfig): string {
 function App() {
 	const [config, setConfig] = createSignal<AppConfig>(loadWorkingConfig());
 	const [editOpen, setEditOpen] = createSignal(config().connections.length === 0);
+	const [fileMenuOpen, setFileMenuOpen] = createSignal(false);
 	const [aboutOpen, setAboutOpen] = createSignal(false);
 	const [helpOpen, setHelpOpen] = createSignal(false);
 	const [saveDialogOpen, setSaveDialogOpen] = createSignal(false);
@@ -503,6 +504,7 @@ function App() {
 
 	const onKeyDown = (event: KeyboardEvent) => {
 		if (event.key === 'Escape') {
+			if (fileMenuOpen()) return;
 			if (calibration()) {
 				event.preventDefault();
 				event.stopPropagation();
@@ -546,7 +548,7 @@ function App() {
 		<main class="app-shell">
 			<nav class="menu-bar" aria-label="Application menu">
 				<div class="menu-left">
-					<DropdownMenu.Root>
+					<DropdownMenu.Root open={fileMenuOpen()} onOpenChange={setFileMenuOpen}>
 						<DropdownMenu.Trigger class="menu-button">File</DropdownMenu.Trigger>
 						<DropdownMenu.Portal>
 							<DropdownMenu.Content class="menu-content">
@@ -1006,6 +1008,9 @@ function App() {
 						<i /> Changes are stored locally
 					</span>
 					<div>
+						<button type="button" onClick={newFile}>
+							New
+						</button>
 						<button type="button" disabled={!savedConfigs().length} onClick={loadFile}>
 							Load
 						</button>

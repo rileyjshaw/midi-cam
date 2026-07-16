@@ -10,11 +10,11 @@
   position: fixed;
   inset: 0 0 auto;
   z-index: 100;
-  height: 48px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px 0 16px;
+  padding: 0 8px 0 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.09);
   background: rgba(8, 9, 12, 0.82);
   backdrop-filter: blur(22px) saturate(130%);
@@ -31,7 +31,7 @@
 }
 
 .menu-left { gap: 2px; }
-.menu-status { gap: 8px; }
+.menu-status { gap: 6px; }
 
 .menu-button,
 .status-button {
@@ -42,8 +42,8 @@
 }
 
 .menu-button {
-  height: 30px;
-  padding: 0 10px;
+  height: 26px;
+  padding: 0 8px;
   font-size: 13px;
 }
 
@@ -53,11 +53,11 @@
 .status-button {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  height: 30px;
-  padding: 0 10px;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
   border: 1px solid var(--border);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -69,9 +69,9 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  max-width: 120px;
+  max-width: 108px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -90,30 +90,30 @@
 
 .midi-select-wrap {
   position: relative;
-  height: 30px;
+  height: 26px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding-left: 9px;
+  gap: 5px;
+  padding-left: 7px;
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--muted);
 }
 
 .midi-select-wrap select {
-  width: 142px;
-  height: 28px;
+  width: 130px;
+  height: 24px;
   padding: 0 24px 0 0;
   border: 0;
   appearance: none;
   background: transparent;
   color: #e8eaf0;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .midi-select-wrap > svg:last-child { position: absolute; right: 7px; pointer-events: none; }
 
-.camera-stage { position: absolute; inset: 48px 0 0; overflow: hidden; background: #07080a; }
+.camera-stage { position: absolute; inset: 40px 0 0; overflow: hidden; background: #07080a; }
 .camera-stage canvas { display: block; width: 100%; height: 100%; }
 .source-video { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
@@ -181,7 +181,7 @@
 
 .config-dialog {
   position: absolute;
-  inset: 62px 16px 16px;
+  inset: 54px 16px 16px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -459,7 +459,7 @@
 .menu-separator { height: 1px; margin: 5px 3px; background: var(--border); }
 .calibration-screen {
   position: fixed;
-  inset: 48px 0 0;
+  inset: 40px 0 0;
   z-index: 150;
   overflow: hidden;
   color: #e5ff19;
@@ -639,7 +639,7 @@
 .app-shell::before {
   content: "";
   position: absolute;
-  inset: 48px 0 0;
+  inset: 40px 0 0;
   z-index: 0;
   pointer-events: none;
   opacity: 0.24;
@@ -922,7 +922,7 @@
   .menu-bar { padding-inline: 9px; }
   .live-status { display: none; }
   .midi-select-wrap select { width: 96px; }
-  .config-dialog { inset: 56px 7px 7px; border-radius: 0; }
+  .config-dialog { inset: 48px 7px 7px; border-radius: 0; }
   .config-header { padding: 16px; }
   .config-header p { max-width: 430px; }
   .controls-table-wrap { padding: 10px; }
@@ -933,7 +933,7 @@
 
 @media (max-width: 620px) {
   .menu-button { padding: 0 6px; font-size: 11px; }
-  .status-button { font-size: 0; width: 32px; padding: 0; justify-content: center; }
+  .status-button { font-size: 0; width: 28px; padding: 0; justify-content: center; }
   .midi-select-wrap { display: none; }
   .config-header { align-items: center; }
   .config-header p { display: none; }

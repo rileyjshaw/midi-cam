@@ -13,10 +13,26 @@ describe('curated landmark groups', () => {
 		expect(body?.options.map(option => option.id)).toEqual(expect.arrayContaining(['pose:36', 'pose:37']));
 	});
 
-	it('offers one center point per eye without corner variants', () => {
-		const faceLabels = LANDMARK_GROUPS.find(group => group.label === 'FACE')?.options.map(option => option.label);
+	it('offers eye centers and upper/lower eyelid points without corner variants', () => {
+		const face = LANDMARK_GROUPS.find(group => group.label === 'FACE');
+		const faceLabels = face?.options.map(option => option.label);
 
-		expect(faceLabels).toEqual(expect.arrayContaining(['Left eye', 'Right eye']));
+		expect(faceLabels).toEqual(
+			expect.arrayContaining([
+				'Left eye',
+				'Upper left eye',
+				'Lower left eye',
+				'Right eye',
+				'Upper right eye',
+				'Lower right eye',
+			]),
+		);
+		expect(Object.fromEntries(face?.options.map(option => [option.label, option.index]) ?? [])).toMatchObject({
+			'Upper left eye': 386,
+			'Lower left eye': 374,
+			'Upper right eye': 159,
+			'Lower right eye': 145,
+		});
 		expect(faceLabels?.some(label => /eye (center|inner|outer)/.test(label))).toBe(false);
 	});
 

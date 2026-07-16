@@ -1,7 +1,8 @@
 import * as Combobox from '@kobalte/core/combobox';
+import Fuse from 'fuse.js';
 import { Check, ChevronDown, Search } from 'lucide-solid';
 import { createMemo, createSignal } from 'solid-js';
-import { LANDMARK_BY_ID, LANDMARK_GROUPS } from './landmarks';
+import { LANDMARK_BY_ID, LANDMARK_GROUPS, LANDMARK_OPTIONS } from './landmarks';
 import type { LandmarkOption } from './types';
 
 interface LandmarkComboboxProps {
@@ -30,21 +31,33 @@ const GROUP_BY_OPTION = new Map(
 	LANDMARK_GROUPS.flatMap(group => group.options.map(option => [option.id, group.label] as const)),
 );
 
-const COMBOBOX_ENTRIES: ComboboxEntry[] = LANDMARK_GROUPS.flatMap(group => [
-	{
-		kind: 'group' as const,
-		id: `group:${group.label.toLowerCase()}`,
-		label: group.label,
-		detail: '',
-		searchText: group.label.toLowerCase(),
-		group: group.label,
-		count: group.options.length,
-	},
-	...group.options,
-]);
+const GROUP_HEADERS = new Map(
+	LANDMARK_GROUPS.map(
+		group =>
+			[
+				group.label,
+				{
+					kind: 'group' as const,
+					id: `group:${group.label.toLowerCase()}`,
+					label: group.label,
+					detail: '',
+					searchText: group.label.toLowerCase(),
+					group: group.label,
+					count: group.options.length,
+				},
+			] as const,
+	),
+);
+
+const LANDMARK_SEARCH = new Fuse(LANDMARK_OPTIONS, {
+	keys: ['searchText'],
+	threshold: 0.4,
+	ignoreLocation: true,
+});
 
 export function LandmarkCombobox(props: LandmarkComboboxProps) {
 	const [collapsed, setCollapsed] = createSignal<Set<string>>(new Set());
+	const [searchQuery, setSearchQuery] = createSignal('');
 	const selected = createMemo(() => (props.value ? (LANDMARK_BY_ID.get(props.value) ?? null) : null));
 	let inputElement: HTMLInputElement | undefined;
 
@@ -71,24 +84,21 @@ export function LandmarkCombobox(props: LandmarkComboboxProps) {
 		});
 	};
 
-	const filterEntry = (entry: ComboboxEntry, inputValue: string) => {
-		const query = inputValue.trim().toLowerCase();
-		if (query) {
-			if (isGroupHeader(entry)) {
-				const group = LANDMARK_GROUPS.find(candidate => candidate.label === entry.group);
-				return Boolean(group?.options.some(option => option.searchText.includes(query)));
-			}
-			return entry.searchText.includes(query);
-		}
-
-		if (isGroupHeader(entry)) return true;
-		return !collapsed().has(GROUP_BY_OPTION.get(entry.id) ?? '');
-	};
+	const visibleEntries = createMemo<ComboboxEntry[]>(() => {
+		const query = searchQuery().trim();
+		const options = query ? LANDMARK_SEARCH.search(query).map(result => result.item) : LANDMARK_OPTIONS;
+		return LANDMARK_GROUPS.flatMap(group => {
+			const matches = options.filter(option => GROUP_BY_OPTION.get(option.id) === group.label);
+			const header = GROUP_HEADERS.get(group.label);
+			if (!header || (query && !matches.length)) return [];
+			return collapsed().has(group.label) ? [header] : [header, ...matches];
+		});
+	});
 
 	return (
 		<Combobox.Root<ComboboxEntry>
 			class="landmark-combobox"
-			options={COMBOBOX_ENTRIES}
+			options={visibleEntries()}
 			optionValue="id"
 			optionLabel="label"
 			optionTextValue="searchText"
@@ -103,7 +113,8 @@ export function LandmarkCombobox(props: LandmarkComboboxProps) {
 			onOpenChange={open => {
 				window.queueMicrotask(open ? clearSearch : restoreSelection);
 			}}
-			defaultFilter={filterEntry}
+			onInputChange={setSearchQuery}
+			defaultFilter={() => true}
 			triggerMode="focus"
 			placeholder="Choose landmark"
 			allowsEmptyCollection

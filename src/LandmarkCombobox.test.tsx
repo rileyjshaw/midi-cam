@@ -93,4 +93,36 @@ describe('landmark combobox', () => {
 		expect(input.value).toBe('Left eye');
 		expect(input.getAttribute('aria-expanded')).toBe('false');
 	});
+
+	it('finds landmarks through fuzzy, typo-tolerant queries', async () => {
+		const host = document.createElement('div');
+		document.body.append(host);
+		let currentValue = '';
+
+		dispose = render(
+			() => <LandmarkCombobox value={null} label="Point A" onChange={next => (currentValue = next ?? '')} />,
+			host,
+		);
+		const input = host.querySelector<HTMLInputElement>('.combobox-input');
+		input?.focus();
+		await settle();
+		if (!input) return;
+
+		input.value = 'shoudler';
+		input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+		await settle();
+
+		const visibleItems = [...document.querySelectorAll<HTMLElement>('.combobox-item')];
+		expect(visibleItems.map(item => item.textContent)).toEqual(
+			expect.arrayContaining([
+				expect.stringContaining('Left shoulder'),
+				expect.stringContaining('Right shoulder'),
+			]),
+		);
+
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		await settle();
+		expect(currentValue).toMatch(/^pose:1[12]$/);
+	});
 });

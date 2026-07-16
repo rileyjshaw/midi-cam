@@ -459,6 +459,15 @@ function App() {
   }
 
   const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      const anotherDialogOpen = aboutOpen() || helpOpen() || saveDialogOpen() || loadDialogOpen()
+      if (!editOpen() && !anotherDialogOpen) {
+        window.queueMicrotask(() => {
+          if (!event.defaultPrevented) setEditOpen(true)
+        })
+      }
+      return
+    }
     if (!(event.metaKey || event.ctrlKey)) return
     const key = event.key.toLowerCase()
     if (key === 's') {
@@ -472,10 +481,10 @@ function App() {
       newFile()
     }
   }
-  window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keydown', onKeyDown, true)
 
   onCleanup(() => {
-    window.removeEventListener('keydown', onKeyDown)
+    window.removeEventListener('keydown', onKeyDown, true)
     runtime?.destroy()
     stream?.getTracks().forEach((track) => track.stop())
     if (calibrationTimer) window.clearInterval(calibrationTimer)

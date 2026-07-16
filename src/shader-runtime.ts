@@ -107,7 +107,7 @@ function connectionBlock(
         1.0
       );` : ''
   const colorValue = isRainbow
-    ? `hsv2rgb(vec3(fract(u_time * 0.055 + colorPosition_${suffix} * 0.42), 0.78, 1.0))`
+    ? `hsv2rgb(vec3(fract(u_time * 0.055 + colorPosition_${suffix} * 0.125), 0.78, 1.0))`
     : `vec3(${float(r)}, ${float(g)}, ${float(b)})`
   return `
   {

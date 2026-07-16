@@ -197,29 +197,6 @@
 .add-control-button:hover,
 .save-button:hover { filter: brightness(0.94); }
 
-.stage-footer {
-  position: absolute;
-  inset: auto 14px 12px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  pointer-events: none;
-}
-
-.stage-footer span {
-  padding: 5px 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 5px;
-  color: rgba(255, 255, 255, 0.62);
-  background: rgba(5, 6, 8, 0.55);
-  backdrop-filter: blur(8px);
-  font: 650 9px/1 ui-monospace, monospace;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.stage-footer span.warning { color: #ffd47b; }
-
 .dialog-overlay { position: fixed; inset: 0; z-index: 20; background: rgba(2, 3, 5, 0.44); }
 .dialog-positioner { position: fixed; inset: 0; z-index: 40; pointer-events: none; }
 
@@ -679,13 +656,327 @@
 }
 @keyframes toast-in { from { opacity: 0; transform: translate(-50%, 8px); } }
 
+/* Hard-edged graphic control system */
+.app-shell {
+  isolation: isolate;
+  background: #050606;
+}
+
+.app-shell::before {
+  content: "";
+  position: absolute;
+  inset: 48px 0 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.24;
+  background:
+    linear-gradient(rgba(229, 255, 25, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(229, 255, 25, 0.16) 1px, transparent 1px);
+  background-size: 64px 64px;
+}
+
+.menu-bar {
+  padding-top: 3px;
+  border-top: 3px solid var(--accent);
+  border-bottom-color: rgba(255, 255, 255, 0.28);
+  background: rgba(5, 7, 7, 0.96);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.wordmark {
+  color: white;
+  font: 900 10px/1 ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.wordmark > span {
+  border: 0;
+  border-radius: 0;
+  background: var(--accent);
+  box-shadow: inset 0 0 0 5px #080a0a;
+}
+
+.menu-button,
+.status-button,
+.primary-button,
+.add-control-button,
+.save-button,
+.calibrate-button,
+.config-footer button,
+.file-dialog-actions button {
+  border-radius: 0;
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.menu-button {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.menu-button:hover,
+.menu-button[data-expanded] {
+  color: #050606;
+  background: var(--accent);
+}
+
+.status-button { border-color: rgba(255, 255, 255, 0.38); }
+
+.channel-readout {
+  border: 1px solid rgba(229, 255, 25, 0.32);
+  border-radius: 0;
+  background: rgba(229, 255, 25, 0.08);
+}
+
+.live-status i,
+.config-footer i {
+  border-radius: 0;
+}
+
+.live-status i.live,
+.config-footer i {
+  box-shadow: 0 0 10px rgba(229, 255, 25, 0.55);
+}
+
+.midi-select-wrap,
+.people-control,
+.icon-button,
+.dialog-close,
+.row-menu-button,
+.color-button,
+.measure-button,
+.cc-button,
+.combobox-control,
+.number-field input,
+.menu-item,
+.save-config-form input,
+.saved-config-item,
+.toast {
+  border-radius: 0;
+}
+
+.camera-stage { background: #060808; }
+
+.camera-empty {
+  place-content: center start;
+  justify-items: start;
+  padding: clamp(36px, 8vw, 128px);
+  text-align: left;
+  background:
+    linear-gradient(112deg, transparent 0 58%, rgba(229, 255, 25, 0.08) 58% 72%, transparent 72%),
+    linear-gradient(rgba(229, 255, 25, 0.11) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(229, 255, 25, 0.11) 1px, transparent 1px),
+    #070909;
+  background-size: auto, 64px 64px, 64px 64px, auto;
+}
+
+.camera-empty::after {
+  content: "INPUT / TRACK / TRANSMIT";
+  position: absolute;
+  right: 3vw;
+  bottom: 3vw;
+  padding: 7px 9px;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font: 800 9px/1 ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.16em;
+}
+
+.camera-glyph {
+  border-color: var(--accent);
+  border-radius: 0;
+  color: #050606;
+  background: var(--accent);
+  box-shadow: 8px 8px 0 rgba(255, 255, 255, 0.14);
+}
+
+.camera-empty h1 {
+  max-width: 850px;
+  font-size: clamp(40px, 7.5vw, 120px);
+  line-height: 0.82;
+  letter-spacing: -0.075em;
+  text-transform: uppercase;
+}
+
+.camera-empty p {
+  margin: 24px 0;
+  padding-left: 12px;
+  border-left: 6px solid var(--accent);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.dialog-overlay {
+  background:
+    repeating-linear-gradient(135deg, transparent 0 24px, rgba(229, 255, 25, 0.025) 24px 25px),
+    rgba(2, 3, 3, 0.7);
+}
+
+.dialog-content {
+  box-shadow: 9px 9px 0 rgba(0, 0, 0, 0.76), 0 30px 90px rgba(0, 0, 0, 0.58);
+}
+
+.config-dialog {
+  border-color: rgba(229, 255, 25, 0.58);
+  border-radius: 0;
+  background:
+    linear-gradient(rgba(229, 255, 25, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(229, 255, 25, 0.025) 1px, transparent 1px),
+    rgba(8, 10, 10, 0.93);
+  background-size: 40px 40px;
+  backdrop-filter: blur(18px) contrast(1.08);
+  -webkit-backdrop-filter: blur(18px) contrast(1.08);
+}
+
+.config-header {
+  padding-block: 20px 18px;
+  border-bottom: 2px solid var(--accent);
+}
+
+.eyebrow {
+  display: inline-block;
+  padding: 4px 6px;
+  color: #050606;
+  background: var(--accent);
+  font-weight: 900;
+}
+
+.config-header h2,
+.empty-controls h3,
+.info-dialog h2,
+.file-dialog h2 {
+  text-transform: uppercase;
+}
+
+.config-header h2 {
+  font-size: 28px;
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+}
+
+.people-control {
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.controls-table-wrap {
+  padding: 14px 18px 20px;
+  scrollbar-color: var(--accent) #090b0b;
+  scrollbar-width: thin;
+}
+
+.controls-table { border-spacing: 0 4px; }
+
+.controls-table td { background: rgba(255, 255, 255, 0.026); }
+
+.controls-table td:first-child {
+  border-left: 3px solid var(--accent);
+  border-radius: 0;
+}
+
+.controls-table td:last-child { border-radius: 0; }
+
+.controls-table tr:hover td {
+  border-color: rgba(229, 255, 25, 0.42);
+  background: rgba(229, 255, 25, 0.045);
+}
+
+.color-button > i,
+.color-grid button {
+  border-radius: 0;
+}
+
+.empty-controls {
+  justify-items: start;
+  padding-left: clamp(22px, 7vw, 100px);
+  text-align: left;
+}
+
+.empty-controls h3 {
+  font-size: 28px;
+  letter-spacing: -0.04em;
+}
+
+.combobox-control:focus-within {
+  border-color: rgba(229, 255, 25, 0.62);
+  background: rgba(0, 0, 0, 0.38);
+}
+
+.combobox-content,
+.popover-content,
+.menu-content {
+  border-top: 3px solid var(--accent);
+  border-radius: 0;
+  background: rgba(9, 11, 11, 0.98);
+  box-shadow: 7px 7px 0 rgba(0, 0, 0, 0.72), 0 18px 55px rgba(0, 0, 0, 0.5);
+  backdrop-filter: none;
+}
+
+.combobox-item { border-radius: 0; }
+
+.combobox-item[data-highlighted],
+.menu-item[data-highlighted] {
+  color: #050606;
+  background: var(--accent);
+}
+
+.number-steppers button:active {
+  color: #050606;
+  background: var(--accent);
+}
+
+.color-grid button.selected {
+  outline-color: var(--accent);
+}
+
+.config-footer {
+  border-top: 2px solid rgba(255, 255, 255, 0.24);
+  background: rgba(4, 5, 5, 0.88);
+}
+
+.info-dialog,
+.file-dialog {
+  border-top: 4px solid var(--accent);
+  border-radius: 0;
+  background:
+    linear-gradient(rgba(229, 255, 25, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(229, 255, 25, 0.035) 1px, transparent 1px),
+    rgba(9, 11, 11, 0.98);
+  background-size: 32px 32px;
+  backdrop-filter: none;
+}
+
+.info-dialog h2,
+.file-dialog h2 {
+  letter-spacing: -0.055em;
+}
+
+.saved-config-item:hover {
+  border-color: var(--accent);
+  background: rgba(229, 255, 25, 0.045);
+}
+
+.toast {
+  border-top: 3px solid var(--accent);
+  background: #090b0b;
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.72);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 860px) {
   .menu-bar { padding-inline: 9px; }
   .wordmark { margin-right: 6px; }
   .channel-readout,
   .live-status { display: none; }
   .midi-select-wrap select { width: 96px; }
-  .config-dialog { inset: 56px 7px 7px; border-radius: 12px; }
+  .config-dialog { inset: 56px 7px 7px; border-radius: 0; }
   .config-header { padding: 16px; }
   .config-header p { max-width: 430px; }
   .controls-table-wrap { padding: 10px; }

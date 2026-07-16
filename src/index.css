@@ -3,20 +3,28 @@
   color: #f7f8fb;
   background: #050608;
   font-synthesis: none;
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "zero" 1;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --panel: rgba(15, 17, 23, 0.86);
-  --panel-solid: #111319;
-  --panel-raised: #181b23;
-  --border: rgba(255, 255, 255, 0.11);
-  --border-strong: rgba(255, 255, 255, 0.18);
-  --muted: #9aa1af;
-  --dim: #686f7c;
-  --accent: #a5ffcf;
-  --danger: #ff6b82;
+  --panel: rgba(8, 10, 10, 0.91);
+  --panel-solid: #0a0c0c;
+  --panel-raised: #111414;
+  --border: rgba(255, 255, 255, 0.16);
+  --border-strong: rgba(255, 255, 255, 0.32);
+  --muted: #a0a6a4;
+  --dim: #68706d;
+  --accent: #e5ff19;
+  --danger: #ff3b30;
 }
 
-* { box-sizing: border-box; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
 
 html,
 body,
@@ -26,7 +34,11 @@ body { overflow: hidden; }
 
 button,
 input,
-select { font: inherit; }
+select {
+  font: inherit;
+  font-variant-numeric: tabular-nums slashed-zero;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
 
 button { color: inherit; }
 

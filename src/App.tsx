@@ -39,7 +39,6 @@ import {
   MEASUREMENT_LABELS,
   MEASUREMENT_ORDER,
   defaultInputRange,
-  pluginSourcesForConnections,
 } from './landmarks'
 import { MidiRouter, midiOutputs } from './midi'
 import {
@@ -220,13 +219,6 @@ function App() {
     }))
   }
 
-  const activeSources = createMemo(() => {
-    const ids = config().connections
-      .filter((connection) => connection.enabled)
-      .flatMap((connection) => [connection.pointA, connection.pointB])
-    const sources = pluginSourcesForConnections(ids)
-    return [...sources].filter((source) => source !== 'screen')
-  })
   const currentShaderSignature = createMemo(() => shaderSignature(config()))
 
   const sampleFor = (connectionId: string) =>
@@ -544,7 +536,7 @@ function App() {
           <button class="menu-button" type="button" onClick={() => setAboutOpen(true)}>About</button>
           <button class="menu-button" type="button" onClick={() => setHelpOpen(true)}>Help</button>
         </div>
-        <div class="menu-status">
+        <div class="menu-status" title={midiError() ?? undefined}>
           <span class="channel-readout">CH 1–{config().maxPeople}</span>
           <Show when={midiAccess()} fallback={
             <button class="status-button" type="button" onClick={connectMidi}><Cable size={14} /> Enable MIDI</button>
@@ -584,11 +576,6 @@ function App() {
             <Show when={cameraError()}><small class="error-text">{cameraError()}</small></Show>
           </div>
         </Show>
-        <div class="stage-footer">
-          <span>{config().connections.filter((connection) => connection.enabled).length} controls</span>
-          <span>{activeSources().length ? activeSources().join(' + ') : 'no trackers'}</span>
-          <Show when={midiError()}><span class="warning">{midiError()}</span></Show>
-        </div>
       </section>
 
       <Show when={calibration()}>{(current) => (

@@ -65,7 +65,7 @@ function endpointCode(
       int ${pointName}Index = u_poseMap[${personIndex}];
       if (${pointName}Index >= 0) {
         vec4 ${pointName}Landmark = poseLandmark(${pointName}Index, ${option.index ?? 0});
-        ${pointName} = ${pointName}Landmark.xy;
+        ${pointName} = vec2(1.0 - ${pointName}Landmark.x, ${pointName}Landmark.y);
         ${validName} = ${pointName}Landmark.w >= 0.35;
       }`
   }
@@ -73,7 +73,8 @@ function endpointCode(
     return `
       int ${pointName}Index = u_faceMap[${personIndex}];
       if (${pointName}Index >= 0) {
-        ${pointName} = faceLandmark(${pointName}Index, ${option.index ?? 0}).xy;
+        vec2 ${pointName}Landmark = faceLandmark(${pointName}Index, ${option.index ?? 0}).xy;
+        ${pointName} = vec2(1.0 - ${pointName}Landmark.x, ${pointName}Landmark.y);
         ${validName} = true;
       }`
   }
@@ -81,7 +82,8 @@ function endpointCode(
   return `
     int ${pointName}Index = ${mapName}[${personIndex}];
     if (${pointName}Index >= 0) {
-      ${pointName} = handLandmark(${pointName}Index, ${option.index ?? 0}).xy;
+      vec2 ${pointName}Landmark = handLandmark(${pointName}Index, ${option.index ?? 0}).xy;
+      ${pointName} = vec2(1.0 - ${pointName}Landmark.x, ${pointName}Landmark.y);
       ${validName} = true;
     }`
 }

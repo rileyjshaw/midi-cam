@@ -16,6 +16,7 @@ describe('generated ShaderPad program', () => {
     expect([...generated.sources]).toEqual(['pose'])
     expect(generated.source).toContain('poseLandmark(pointA_0_0Index, 15)')
     expect(generated.source).toContain('poseLandmark(pointB_0_0Index, 16)')
+    expect(generated.source).toContain('vec2(1.0 - pointA_0_0Landmark.x, pointA_0_0Landmark.y)')
     expect(generated.source).toContain('u_poseMap[1]')
     expect(generated.source).not.toContain('faceLandmark(')
     expect(generated.source).not.toContain('handLandmark(')

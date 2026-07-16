@@ -22,7 +22,7 @@ interface SlotMemory {
 const distance = (a: Point2D, b: Point2D) => Math.hypot(a.x - b.x, a.y - b.y)
 
 function point(landmark: NormalizedLandmark | undefined): Point2D | null {
-  return landmark ? { x: landmark.x, y: 1 - landmark.y } : null
+  return landmark ? { x: 1 - landmark.x, y: 1 - landmark.y } : null
 }
 
 function boundsCenter(
@@ -37,8 +37,9 @@ function boundsCenter(
   let maxX = -Infinity
   let maxY = -Infinity
   for (const landmark of selected) {
-    minX = Math.min(minX, landmark.x)
-    maxX = Math.max(maxX, landmark.x)
+    const mirroredX = 1 - landmark.x
+    minX = Math.min(minX, mirroredX)
+    maxX = Math.max(maxX, mirroredX)
     minY = Math.min(minY, 1 - landmark.y)
     maxY = Math.max(maxY, 1 - landmark.y)
   }

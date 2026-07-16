@@ -30,7 +30,7 @@ export interface ShaderRuntime {
 	destroy: () => void;
 }
 
-export interface ShaderUniformUsage {
+interface ShaderUniformUsage {
 	pose: boolean;
 	face: boolean;
 	leftHand: boolean;
@@ -120,16 +120,14 @@ function connectionBlock(
         0.0,
         1.0
       );
-      vec4 elasticGradient_${suffix} = elasticGradient(
+      vec3 elasticColor_${suffix} = elasticGradient(
         vec3(${float(r)}, ${float(g)}, ${float(b)}),
         ${isRainbow ? '1.0' : '0.0'},
         colorPosition_${suffix}
       );
-      vec3 haloColor_${suffix} = boostSaturation(elasticGradient_${suffix}.rgb, 1.42);
-      lineIntensity += elasticGradient_${suffix}.a * (
-        elasticMask_${suffix}.x * 0.94 + elasticMask_${suffix}.y * 0.14
-      );
-      lineColor += elasticGradient_${suffix}.rgb * elasticMask_${suffix}.x * 1.28;
+      vec3 haloColor_${suffix} = boostSaturation(elasticColor_${suffix}, 1.42);
+      lineIntensity += elasticMask_${suffix}.x * 0.94 + elasticMask_${suffix}.y * 0.14;
+      lineColor += elasticColor_${suffix} * elasticMask_${suffix}.x * 1.28;
       lineColor += haloColor_${suffix} * elasticMask_${suffix}.y * 0.36;
     }
   }`;
@@ -207,14 +205,14 @@ vec3 boostSaturation(vec3 color, float amount) {
   return clamp(mix(vec3(luminance), color, amount), 0.0, 1.0);
 }
 
-vec4 elasticGradient(vec3 baseColor, float rainbowMix, float position) {
+vec3 elasticGradient(vec3 baseColor, float rainbowMix, float position) {
   float leadingPosition = 1.0 - position;
-  float endpointPhase = leadingPosition * 0.125;
-  float crtWave = 0.5 + 0.5 * sin(6.283185 * (u_time * 0.34 + endpointPhase));
-  float crtBrightness = mix(0.64, 1.0, crtWave);
-  vec3 solidColor = baseColor * crtBrightness;
-  vec3 rainbowColor = hsv2rgb(vec3(fract(u_time * 0.055 + endpointPhase), 0.94, 1.0));
-  return vec4(mix(solidColor, rainbowColor, rainbowMix), mix(crtBrightness, 1.0, rainbowMix));
+  float lightnessPhase = u_time * 0.34 + leadingPosition * 0.25;
+  float lightness = 0.82 + 0.18 * sin(6.283185 * lightnessPhase);
+  vec3 solidColor = baseColor * lightness;
+  float rainbowHue = fract(u_time * 0.055 + leadingPosition * 0.125);
+  vec3 rainbowColor = hsv2rgb(vec3(rainbowHue, 0.94, 1.0));
+  return mix(solidColor, rainbowColor, rainbowMix);
 }
 
 vec2 renderGlowingSegmentExpWidth(

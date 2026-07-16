@@ -22,12 +22,24 @@ import {
 	Video,
 	X,
 } from 'lucide-solid';
-import { For, Index, Show, createEffect, createMemo, createSignal, createUniqueId, onCleanup, untrack } from 'solid-js';
+import {
+	For,
+	Index,
+	Show,
+	createEffect,
+	createMemo,
+	createSignal,
+	createUniqueId,
+	onCleanup,
+	untrack,
+	type JSX,
+} from 'solid-js';
 import './App.css';
-import { COLOR_NAMES, COLOR_PALETTE, cloneConfig, createConnection, shaderSignature } from './config';
+import { COLOR_NAMES, COLOR_PALETTE, cloneConfig, colorName, createConnection, shaderSignature } from './config';
 import { LandmarkCombobox } from './LandmarkCombobox';
 import { MEASUREMENT_LABELS, MEASUREMENT_ORDER, defaultInputRange } from './landmarks';
 import { MidiRouter, midiOutputs } from './midi';
+import { clampMidiValue } from './numbers';
 import {
 	clearWorkingConfig,
 	deleteNamedConfig,
@@ -156,7 +168,7 @@ function KDialog(props: {
 	onOpenChange: (open: boolean) => void;
 	title: string;
 	class?: string;
-	children: unknown;
+	children: JSX.Element;
 }) {
 	return (
 		<Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
@@ -165,12 +177,16 @@ function KDialog(props: {
 				<div class="dialog-positioner">
 					<Dialog.Content class={`dialog-content ${props.class ?? ''}`}>
 						<Dialog.Title class="sr-only">{props.title}</Dialog.Title>
-						{props.children as never}
+						{props.children}
 					</Dialog.Content>
 				</div>
 			</Dialog.Portal>
 		</Dialog.Root>
 	);
+}
+
+function swatchStyle(color: string): JSX.CSSProperties {
+	return color === 'transparent' || color === 'rainbow' ? {} : { background: color };
 }
 
 function savedConfigSummary(entry: NamedConfig): string {
@@ -227,7 +243,14 @@ function App() {
 
 	const currentShaderSignature = createMemo(() => shaderSignature(config()));
 
-	const sampleFor = (connectionId: string) => samples().find(sample => sample.connectionId === connectionId);
+	const samplesByConnection = createMemo(() => {
+		const byConnection = new Map<string, MeasurementSample>();
+		for (const sample of samples()) {
+			if (!byConnection.has(sample.connectionId)) byConnection.set(sample.connectionId, sample);
+		}
+		return byConnection;
+	});
+	const sampleFor = (connectionId: string) => samplesByConnection().get(connectionId);
 
 	const routeSamples = (nextSamples: MeasurementSample[]) => {
 		setSamples(nextSamples);
@@ -273,10 +296,8 @@ function App() {
 	});
 
 	createEffect(() => {
-		const signature = currentShaderSignature();
-		const ready = videoReady();
-		void signature;
-		if (ready) rebuildRuntime();
+		currentShaderSignature();
+		if (videoReady()) rebuildRuntime();
 	});
 
 	createEffect(() => {
@@ -357,7 +378,6 @@ function App() {
 			measurement,
 			inputMin,
 			inputMax,
-			calibrated: false,
 		});
 	};
 
@@ -366,7 +386,6 @@ function App() {
 			updateConnection(state.connectionId, {
 				inputMin: state.min,
 				inputMax: state.max,
-				calibrated: true,
 			});
 			showToast('Calibration captured');
 		} else {
@@ -808,10 +827,7 @@ function App() {
 																	max={127}
 																	onChange={cc =>
 																		updateConnection(connection().id, {
-																			cc: Math.min(
-																				127,
-																				Math.max(0, Math.round(cc)),
-																			),
+																			cc: clampMidiValue(cc),
 																		})
 																	}
 																/>
@@ -822,10 +838,7 @@ function App() {
 																	max={127}
 																	onChange={midiMin =>
 																		updateConnection(connection().id, {
-																			midiMin: Math.min(
-																				127,
-																				Math.max(0, Math.round(midiMin)),
-																			),
+																			midiMin: clampMidiValue(midiMin),
 																		})
 																	}
 																/>
@@ -836,10 +849,7 @@ function App() {
 																	max={127}
 																	onChange={midiMax =>
 																		updateConnection(connection().id, {
-																			midiMax: Math.min(
-																				127,
-																				Math.max(0, Math.round(midiMax)),
-																			),
+																			midiMax: clampMidiValue(midiMax),
 																		})
 																	}
 																/>
@@ -852,7 +862,6 @@ function App() {
 																	onChange={inputMin =>
 																		updateConnection(connection().id, {
 																			inputMin,
-																			calibrated: true,
 																		})
 																	}
 																/>
@@ -863,7 +872,6 @@ function App() {
 																	onChange={inputMax =>
 																		updateConnection(connection().id, {
 																			inputMax,
-																			calibrated: true,
 																		})
 																	}
 																/>
@@ -884,14 +892,14 @@ function App() {
 												<Popover.Root placement="bottom-end">
 													<Popover.Trigger
 														class="color-button"
-														aria-label={`Connection color ${COLOR_NAMES[connection().color as keyof typeof COLOR_NAMES] ?? connection().color}`}
+														aria-label={`Connection color ${colorName(connection().color)}`}
 													>
 														<i
 															classList={{
 																transparent: connection().color === 'transparent',
 																rainbow: connection().color === 'rainbow',
 															}}
-															style={{ background: connection().color }}
+															style={swatchStyle(connection().color)}
 														/>
 													</Popover.Trigger>
 													<Popover.Portal>
@@ -907,7 +915,7 @@ function App() {
 																				transparent: color === 'transparent',
 																				rainbow: color === 'rainbow',
 																			}}
-																			style={{ background: color }}
+																			style={swatchStyle(color)}
 																			onClick={() =>
 																				updateConnection(connection().id, {
 																					color,

@@ -39,7 +39,7 @@ function boundsCenter(landmarks: NormalizedLandmark[] | undefined, indices?: num
 }
 
 function handCenter(hand: NormalizedLandmark[] | undefined): Point2D | null {
-	return boundsCenter(hand, [0, 0, 5, 9, 13, 17]);
+	return boundsCenter(hand, [0, 5, 9, 13, 17]);
 }
 
 function nearestAvailable(
@@ -205,11 +205,12 @@ export class PersonTracker {
 		for (let slot = 0; slot < this.slots.length; slot += 1) {
 			const memory = this.slots[slot];
 			if (!memory.anchor || now - memory.lastSeen > 1500) continue;
+			const anchor = memory.anchor;
 			candidates.forEach((candidate, candidateIndex) => {
 				possibleMatches.push({
 					slot,
 					candidate: candidateIndex,
-					distance: distance(memory.anchor!, candidate.anchor),
+					distance: distance(anchor, candidate.anchor),
 				});
 			});
 		}

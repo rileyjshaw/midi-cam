@@ -79,12 +79,12 @@ describe('generated ShaderPad program', () => {
 		const generated = generateShader(config);
 		expect(generated.source).toContain('uniform float u_time;');
 		expect(generated.source).toContain('float leadingPosition = 1.0 - position;');
-		expect(generated.source).toContain('float endpointPhase = leadingPosition * 0.125;');
-		expect(generated.source).toContain('), 0.94, 1.0)');
+		expect(generated.source).toContain('float rainbowHue = fract(u_time * 0.055 + leadingPosition * 0.125);');
+		expect(generated.source).toContain('vec3(rainbowHue, 0.94, 1.0)');
 		expect(generated.source).toContain('hsv2rgb');
 	});
 
-	it('uses the shared CRT gradient and split glow path for solid colors', () => {
+	it('modulates only color lightness with point A leading by a quarter wavelength', () => {
 		const config = createDefaultConfig();
 		const connection = createConnection([]);
 		connection.pointA = 'pose:11';
@@ -93,13 +93,15 @@ describe('generated ShaderPad program', () => {
 		config.connections = [connection];
 
 		const generated = generateShader(config);
-		expect(generated.source).toContain('float crtBrightness = mix(0.64, 1.0, crtWave);');
-		expect(generated.source).toContain('vec4 elasticGradient_0_0 = elasticGradient(');
+		expect(generated.source).toContain('float lightnessPhase = u_time * 0.34 + leadingPosition * 0.25;');
+		expect(generated.source).toContain('float lightness = 0.82 + 0.18 * sin(6.283185 * lightnessPhase);');
+		expect(generated.source).toContain('vec3 elasticColor_0_0 = elasticGradient(');
 		expect(generated.source).toContain('vec3(0.133333, 0.827451, 0.933333),\n        0.0,');
 		expect(generated.source).toContain('vec2 elasticMask_0_0 = renderGlowingSegmentExpWidth(');
 		expect(generated.source).toContain('69.0,');
-		expect(generated.source).toContain('boostSaturation(elasticGradient_0_0.rgb, 1.42)');
+		expect(generated.source).toContain('boostSaturation(elasticColor_0_0, 1.42)');
 		expect(generated.source).toContain('elasticMask_0_0.y * 0.14');
+		expect(generated.source).not.toContain('lineIntensity += elasticColor_0_0');
 	});
 
 	it('does not rebuild for MIDI-only edits but does rebuild for shader edits', () => {

@@ -1,4 +1,5 @@
 import { cloneConfig, createDefaultConfig } from './config';
+import { clampMidiValue } from './numbers';
 import type { AppConfig, ConnectionConfig } from './types';
 
 const WORKING_KEY = 'midi-cam:working:v1';
@@ -11,6 +12,8 @@ export interface NamedConfig {
 	config: AppConfig;
 }
 
+const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
 function isConnection(value: unknown): value is ConnectionConfig {
 	if (!value || typeof value !== 'object') return false;
 	const item = value as Partial<ConnectionConfig>;
@@ -19,11 +22,11 @@ function isConnection(value: unknown): value is ConnectionConfig {
 		(item.pointA === null || typeof item.pointA === 'string') &&
 		(item.pointB === null || typeof item.pointB === 'string') &&
 		['distance', 'angle', 'distanceX', 'distanceY'].includes(item.measurement ?? '') &&
-		typeof item.cc === 'number' &&
-		typeof item.midiMin === 'number' &&
-		typeof item.midiMax === 'number' &&
-		typeof item.inputMin === 'number' &&
-		typeof item.inputMax === 'number' &&
+		isFiniteNumber(item.cc) &&
+		isFiniteNumber(item.midiMin) &&
+		isFiniteNumber(item.midiMax) &&
+		isFiniteNumber(item.inputMin) &&
+		isFiniteNumber(item.inputMax) &&
 		typeof item.color === 'string' &&
 		typeof item.enabled === 'boolean'
 	);
@@ -35,7 +38,8 @@ function parseConfig(raw: string | null): AppConfig | null {
 		const value = JSON.parse(raw) as Partial<AppConfig>;
 		if (
 			value.version !== 1 ||
-			typeof value.maxPeople !== 'number' ||
+			!isFiniteNumber(value.maxPeople) ||
+			!Number.isInteger(value.maxPeople) ||
 			value.maxPeople < 1 ||
 			value.maxPeople > 4 ||
 			!Array.isArray(value.connections) ||
@@ -45,19 +49,18 @@ function parseConfig(raw: string | null): AppConfig | null {
 		}
 		return {
 			version: 1,
-			maxPeople: Math.round(value.maxPeople),
+			maxPeople: value.maxPeople,
 			midiOutputId: typeof value.midiOutputId === 'string' ? value.midiOutputId : null,
 			connections: value.connections.map(connection => ({
 				id: connection.id,
 				pointA: connection.pointA,
 				pointB: connection.pointB,
 				measurement: connection.measurement,
-				cc: Math.min(127, Math.max(0, Math.round(connection.cc))),
-				midiMin: Math.min(127, Math.max(0, Math.round(connection.midiMin))),
-				midiMax: Math.min(127, Math.max(0, Math.round(connection.midiMax))),
+				cc: clampMidiValue(connection.cc),
+				midiMin: clampMidiValue(connection.midiMin),
+				midiMax: clampMidiValue(connection.midiMax),
 				inputMin: connection.inputMin,
 				inputMax: connection.inputMax,
-				calibrated: connection.calibrated === true,
 				color: connection.color,
 				enabled: connection.enabled,
 			})),

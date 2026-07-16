@@ -35,7 +35,6 @@ export interface ConnectionConfig {
 	midiMax: number;
 	inputMin: number;
 	inputMax: number;
-	calibrated: boolean;
 	color: string;
 	enabled: boolean;
 }

@@ -1,6 +1,7 @@
+import { clamp, clampMidiValue } from './numbers';
 import type { MeasurementType, Point2D } from './types';
 
-export interface MeasurementResult {
+interface MeasurementResult {
 	value: number;
 	angleState?: number;
 }
@@ -42,6 +43,6 @@ export function mapMeasurementToMidi(
 ): number | null {
 	if (![value, inputMin, inputMax, midiMin, midiMax].every(Number.isFinite)) return null;
 	if (Math.abs(inputMax - inputMin) < 1e-9) return null;
-	const t = Math.min(1, Math.max(0, (value - inputMin) / (inputMax - inputMin)));
-	return Math.min(127, Math.max(0, Math.round(midiMin + t * (midiMax - midiMin))));
+	const t = clamp((value - inputMin) / (inputMax - inputMin), 0, 1);
+	return clampMidiValue(midiMin + t * (midiMax - midiMin));
 }

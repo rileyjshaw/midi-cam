@@ -43,6 +43,10 @@ export const COLOR_NAMES: Record<(typeof COLOR_PALETTE)[number], string> = {
 	'#6EE7B7': 'Mint',
 };
 
+export function colorName(color: string): string {
+	return COLOR_NAMES[color as keyof typeof COLOR_NAMES] ?? color;
+}
+
 const DEFAULT_CONNECTION_COLORS = COLOR_PALETTE.filter(color => color !== 'transparent');
 
 export function createConnection(
@@ -63,7 +67,6 @@ export function createConnection(
 		midiMax: 127,
 		inputMin,
 		inputMax,
-		calibrated: false,
 		color: DEFAULT_CONNECTION_COLORS[existing.length % DEFAULT_CONNECTION_COLORS.length],
 		enabled: true,
 	};
@@ -79,7 +82,7 @@ export function createDefaultConfig(): AppConfig {
 }
 
 export function cloneConfig(config: AppConfig): AppConfig {
-	return JSON.parse(JSON.stringify(config)) as AppConfig;
+	return structuredClone(config);
 }
 
 export function shaderSignature(config: AppConfig): string {

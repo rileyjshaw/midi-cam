@@ -153,8 +153,12 @@ describe('application interface', () => {
 		const controls = [...document.querySelectorAll<HTMLElement>('.menu-status > *')].map(item =>
 			item.textContent?.trim(),
 		);
+		const landingActions = [...document.querySelectorAll<HTMLButtonElement>('.camera-empty-actions > button')].map(
+			button => button.textContent?.trim(),
+		);
 
 		expect(controls.slice(0, 2)).toEqual(['Start camera', 'Enable MIDI']);
+		expect(landingActions).toEqual(['Start camera', 'Enable MIDI']);
 	});
 
 	it('opens the measurement menu from its full trigger and resets the selected input range', async () => {

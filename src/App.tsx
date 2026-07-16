@@ -778,9 +778,16 @@ function App() {
 						</div>
 						<h1>Turn movement into MIDI.</h1>
 						<p>Generate MIDI CC messages using your body's motion</p>
-						<button class="primary-button" type="button" onClick={() => void startCamera()}>
-							<Video size={17} /> Start camera
-						</button>
+						<div class="camera-empty-actions">
+							<button class="primary-button" type="button" onClick={() => void startCamera()}>
+								<Video size={17} /> Start camera
+							</button>
+							<Show when={!midiAccess()}>
+								<button class="primary-button" type="button" onClick={connectMidi}>
+									<Cable size={17} /> Enable MIDI
+								</button>
+							</Show>
+						</div>
 						<Show when={cameraError()}>
 							<small class="error-text">{cameraError()}</small>
 						</Show>

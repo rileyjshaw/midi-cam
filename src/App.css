@@ -182,7 +182,7 @@
 }
 
 .camera-empty h1 {
-	margin: 0;
+	margin: 0 0 0 -0.05em;
 	font-size: clamp(32px, 5vw, 64px);
 	line-height: 1;
 	letter-spacing: -0.055em;
@@ -218,6 +218,12 @@
 	min-height: 40px;
 	padding: 0 17px;
 	font-size: 13px;
+}
+
+.camera-empty-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
 }
 .primary-button:hover,
 .add-control-button:hover,
@@ -1336,7 +1342,16 @@
 }
 
 .status-button {
-	border-color: rgba(255, 255, 255, 0.38);
+	border-color: var(--accent);
+	color: #050606;
+	background: var(--accent);
+}
+
+.status-button:hover {
+	border-color: var(--accent);
+	color: #050606;
+	background: var(--accent);
+	filter: brightness(0.94);
 }
 
 .live-status i,

@@ -38,6 +38,17 @@ describe('local configuration persistence', () => {
 		expect(loadWorkingConfig().connections[0]).not.toHaveProperty('angleMode');
 	});
 
+	it('migrates replaced palette colors in stored configurations', () => {
+		const connection = createConnection([]);
+		connection.color = '#D946EF';
+		localStorage.setItem(
+			'midi-cam:working:v1',
+			JSON.stringify({ ...createDefaultConfig(), connections: [connection] }),
+		);
+
+		expect(loadWorkingConfig().connections[0].color).toBe('#F9A8D4');
+	});
+
 	it('stores, replaces, loads, and deletes named configurations', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date('2026-07-15T20:00:00Z'));

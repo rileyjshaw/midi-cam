@@ -457,7 +457,7 @@
 }
 .color-button > i.rainbow,
 .color-grid button.rainbow {
-	background: linear-gradient(135deg, #ff334f 4%, #ffd60a 23%, #20c866 42%, #22d3ee 60%, #246bfd 77%, #d946ef 96%);
+	background: linear-gradient(135deg, #ff334f 4%, #ffd60a 23%, #1ab65d 42%, #67e8f9 60%, #246bfd 77%, #f9a8d4 96%);
 }
 .row-menu-button {
 	width: 34px;

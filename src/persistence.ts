@@ -1,4 +1,4 @@
-import { cloneConfig, createDefaultConfig } from './config';
+import { cloneConfig, createDefaultConfig, migrateColor } from './config';
 import { clampMidiValue } from './numbers';
 import type { AppConfig, ConnectionConfig } from './types';
 
@@ -61,7 +61,7 @@ function parseConfig(raw: string | null): AppConfig | null {
 				midiMax: clampMidiValue(connection.midiMax),
 				inputMin: connection.inputMin,
 				inputMax: connection.inputMax,
-				color: connection.color,
+				color: migrateColor(connection.color),
 				enabled: connection.enabled,
 			})),
 		};

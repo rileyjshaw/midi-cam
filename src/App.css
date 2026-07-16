@@ -545,6 +545,8 @@
 .info-dialog p,
 .file-dialog p,
 .info-dialog li { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.info-dialog a { color: var(--accent); text-decoration-color: rgba(165, 255, 207, 0.45); text-underline-offset: 3px; }
+.info-dialog a:hover { text-decoration-color: var(--accent); }
 .info-dialog small { display: block; margin-top: 16px; color: #777e8a; }
 .help-dialog ol { padding-left: 20px; }
 .dialog-close { position: absolute; top: 12px; right: 12px; width: 34px; height: 34px; }

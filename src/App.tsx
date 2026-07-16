@@ -759,7 +759,11 @@ function App() {
         <button class="dialog-close" type="button" onClick={() => setAboutOpen(false)}><X size={18} /></button>
         <Info size={24} />
         <h2>MIDI Cam</h2>
-        <p>A camera-driven MIDI controller powered by ShaderPad and MediaPipe. Each tracked performer is routed to their own ascending MIDI channel.</p>
+        <p>
+          A camera-driven MIDI controller powered by{' '}
+          <a href="https://misery.co/shaderpad" target="_blank" rel="noopener noreferrer">ShaderPad</a>.
+          {' '}Each tracked performer is routed to their own ascending MIDI channel.
+        </p>
         <small>Camera frames and landmark data stay in your browser.</small>
       </KDialog>
 

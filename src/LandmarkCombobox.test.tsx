@@ -94,35 +94,29 @@ describe('landmark combobox', () => {
 		expect(input.getAttribute('aria-expanded')).toBe('false');
 	});
 
-	it('finds landmarks through fuzzy, typo-tolerant queries', async () => {
+	it('uses case-insensitive substring matching without loose fuzzy results', async () => {
 		const host = document.createElement('div');
 		document.body.append(host);
-		let currentValue = '';
 
-		dispose = render(
-			() => <LandmarkCombobox value={null} label="Point A" onChange={next => (currentValue = next ?? '')} />,
-			host,
-		);
+		dispose = render(() => <LandmarkCombobox value={null} label="Point A" onChange={() => undefined} />, host);
 		const input = host.querySelector<HTMLInputElement>('.combobox-input');
 		input?.focus();
 		await settle();
 		if (!input) return;
 
-		input.value = 'shoudler';
+		input.value = 'Right c';
 		input.dispatchEvent(new InputEvent('input', { bubbles: true }));
 		await settle();
 
-		const visibleItems = [...document.querySelectorAll<HTMLElement>('.combobox-item')];
-		expect(visibleItems.map(item => item.textContent)).toEqual(
-			expect.arrayContaining([
-				expect.stringContaining('Left shoulder'),
-				expect.stringContaining('Right shoulder'),
-			]),
-		);
+		const visibleLabels = () =>
+			[...document.querySelectorAll<HTMLElement>('.combobox-item')].map(item => item.textContent ?? '');
+		expect(visibleLabels().some(label => label.includes('Right cheek'))).toBe(true);
+		expect(visibleLabels().some(label => label.includes('Right eye'))).toBe(false);
 
-		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
-		input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+		input.value = 'ChE';
+		input.dispatchEvent(new InputEvent('input', { bubbles: true }));
 		await settle();
-		expect(currentValue).toMatch(/^pose:1[12]$/);
+
+		expect(visibleLabels().some(label => label.includes('Right cheek'))).toBe(true);
 	});
 });

@@ -1,5 +1,4 @@
 import * as Combobox from '@kobalte/core/combobox';
-import Fuse from 'fuse.js';
 import { Check, ChevronDown, Search } from 'lucide-solid';
 import { createMemo, createSignal } from 'solid-js';
 import { LANDMARK_BY_ID, LANDMARK_GROUPS, LANDMARK_OPTIONS } from './landmarks';
@@ -49,12 +48,6 @@ const GROUP_HEADERS = new Map(
 	),
 );
 
-const LANDMARK_SEARCH = new Fuse(LANDMARK_OPTIONS, {
-	keys: ['searchText'],
-	threshold: 0.4,
-	ignoreLocation: true,
-});
-
 export function LandmarkCombobox(props: LandmarkComboboxProps) {
 	const [collapsed, setCollapsed] = createSignal<Set<string>>(new Set());
 	const [searchQuery, setSearchQuery] = createSignal('');
@@ -85,8 +78,8 @@ export function LandmarkCombobox(props: LandmarkComboboxProps) {
 	};
 
 	const visibleEntries = createMemo<ComboboxEntry[]>(() => {
-		const query = searchQuery().trim();
-		const options = query ? LANDMARK_SEARCH.search(query).map(result => result.item) : LANDMARK_OPTIONS;
+		const query = searchQuery().trim().toLowerCase().replace(/\s+/g, ' ');
+		const options = query ? LANDMARK_OPTIONS.filter(option => option.searchText.includes(query)) : LANDMARK_OPTIONS;
 		return LANDMARK_GROUPS.flatMap(group => {
 			const matches = options.filter(option => GROUP_BY_OPTION.get(option.id) === group.label);
 			const header = GROUP_HEADERS.get(group.label);

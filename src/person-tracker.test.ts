@@ -72,7 +72,7 @@ describe('person assignment', () => {
     }
     const snapshots = snapshot({ poses: [landmarksAt(0.25, 0.4, 33)] })
 
-    expect(resolveLandmark(LANDMARK_BY_ID.get('pose:15')!, assignment, snapshots)).toEqual({
+    expect(resolveLandmark(LANDMARK_BY_ID.get('pose:11')!, assignment, snapshots)).toEqual({
       x: 0.75,
       y: 0.6,
     })

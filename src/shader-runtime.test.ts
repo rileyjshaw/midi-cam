@@ -6,16 +6,16 @@ describe('generated ShaderPad program', () => {
   it('hardcodes configured landmarks and includes only required point helpers', () => {
     const config = createDefaultConfig()
     const connection = createConnection([])
-    connection.pointA = 'pose:15'
-    connection.pointB = 'pose:16'
+    connection.pointA = 'pose:11'
+    connection.pointB = 'pose:12'
     connection.color = '#FF4D6D'
     config.maxPeople = 2
     config.connections = [connection]
 
     const generated = generateShader(config)
     expect([...generated.sources]).toEqual(['pose'])
-    expect(generated.source).toContain('poseLandmark(pointA_0_0Index, 15)')
-    expect(generated.source).toContain('poseLandmark(pointB_0_0Index, 16)')
+    expect(generated.source).toContain('poseLandmark(pointA_0_0Index, 11)')
+    expect(generated.source).toContain('poseLandmark(pointB_0_0Index, 12)')
     expect(generated.source).toContain('vec2(1.0 - pointA_0_0Landmark.x, pointA_0_0Landmark.y)')
     expect(generated.source).toContain('u_poseMap[1]')
     expect(generated.source).not.toContain('faceLandmark(')
@@ -71,8 +71,8 @@ describe('generated ShaderPad program', () => {
   it('generates a time-evolving point-to-point hue gradient for rainbow lines', () => {
     const config = createDefaultConfig()
     const connection = createConnection([])
-    connection.pointA = 'pose:15'
-    connection.pointB = 'pose:16'
+    connection.pointA = 'pose:11'
+    connection.pointB = 'pose:12'
     connection.color = 'rainbow'
     config.connections = [connection]
 

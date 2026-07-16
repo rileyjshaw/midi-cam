@@ -8,7 +8,18 @@ describe('curated landmark groups', () => {
     expect(body?.options[0]?.id).toBe('pose:11')
     expect(body?.options.map((option) => option.id)).not.toContain('pose:31')
     expect(body?.options.map((option) => option.id)).not.toContain('pose:32')
+    const removedIndices = [15, 16, 17, 18, 19, 20, 21, 22, 27, 28, 29, 30]
+    expect(body?.options.some((option) => removedIndices.includes(option.index ?? -1))).toBe(false)
     expect(body?.options.map((option) => option.id)).toEqual(expect.arrayContaining(['pose:36', 'pose:37']))
+  })
+
+  it('offers one center point per eye without corner variants', () => {
+    const faceLabels = LANDMARK_GROUPS
+      .find((group) => group.label === 'FACE')
+      ?.options.map((option) => option.label)
+
+    expect(faceLabels).toEqual(expect.arrayContaining(['Left eye', 'Right eye']))
+    expect(faceLabels?.some((label) => /eye (center|inner|outer)/.test(label))).toBe(false)
   })
 
   it('offers only a base and tip for each finger', () => {

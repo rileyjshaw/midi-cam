@@ -40,7 +40,7 @@ describe('local configuration persistence', () => {
     vi.setSystemTime(new Date('2026-07-15T20:00:00Z'))
     const config = createDefaultConfig()
     const connection = createConnection([])
-    connection.pointA = 'pose:15'
+    connection.pointA = 'pose:11'
     connection.pointB = 'screen:center'
     config.connections = [connection]
 

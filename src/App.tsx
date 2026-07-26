@@ -776,7 +776,7 @@ function App() {
 						<div class="camera-glyph">
 							<Video size={28} />
 						</div>
-						<h1>Turn movement into MIDI.</h1>
+						<h1>MIDI from movement.</h1>
 						<p>Generate MIDI CC messages using your body's motion</p>
 						<div class="camera-empty-actions">
 							<button class="primary-button" type="button" onClick={() => void startCamera()}>

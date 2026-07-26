@@ -80,16 +80,21 @@ describe('application interface', () => {
 		expect(document.querySelector('.config-dialog')).not.toBeNull();
 	});
 
-	it('waits to open an empty first-time configuration until the camera starts', async () => {
+	it('keeps the splash visible until both camera and MIDI are enabled', async () => {
 		const config = createDefaultConfig();
 		config.connections = [];
 		persistWorkingConfig(config);
 		const camera = cameraDevice('camera-1', 'Built-in camera');
+		const access = {
+			outputs: new Map(),
+			onstatechange: null,
+		} as unknown as MIDIAccess;
 		vi.stubGlobal('navigator', {
 			mediaDevices: {
 				enumerateDevices: vi.fn().mockResolvedValue([camera]),
 				getUserMedia: vi.fn().mockResolvedValue(cameraStream(cameraTrack(camera.deviceId))),
 			},
+			requestMIDIAccess: vi.fn().mockResolvedValue(access),
 		});
 		vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue();
 
@@ -101,7 +106,18 @@ describe('application interface', () => {
 		await settle();
 		await settle();
 
+		expect(document.querySelector('.camera-empty')).not.toBeNull();
+		expect(document.querySelector('.camera-empty')?.classList.contains('has-camera')).toBe(true);
+		expect(document.querySelector('.source-video')?.classList.contains('splash-preview')).toBe(true);
+		expect(document.querySelector('.camera-empty-actions')?.textContent).not.toContain('Start camera');
+		expect(document.querySelector('.camera-empty-actions')?.textContent).toContain('Enable MIDI');
+		expect(document.querySelector('.config-dialog')).toBeNull();
+
+		findButton('Enable MIDI')?.click();
+		await settle();
+
 		expect(document.querySelector('.camera-empty')).toBeNull();
+		expect(document.querySelector('.source-video')?.classList.contains('splash-preview')).toBe(false);
 		expect(document.querySelector('.config-dialog')).not.toBeNull();
 	});
 

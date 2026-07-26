@@ -298,9 +298,11 @@ function App() {
 	let calibrationTimer: number | undefined;
 	let toastTimer: number | undefined;
 	const midiRouter = new MidiRouter();
+	const introComplete = createMemo(() => videoReady() && Boolean(midiAccess()));
 	const setupComplete = createMemo(
 		() => videoReady() && outputs().some(output => output.id === config().midiOutputId),
 	);
+	let introHandled = false;
 
 	const showToast = (message: string) => {
 		setToast(message);
@@ -385,6 +387,12 @@ function App() {
 		midiRouter.setOutput(output);
 	});
 
+	createEffect(() => {
+		if (!introComplete() || introHandled) return;
+		introHandled = true;
+		if (untrack(() => config().connections.length === 0)) setEditOpen(true);
+	});
+
 	const refreshCameraDevices = async (activeDeviceId = cameraDeviceId()) => {
 		if (!navigator.mediaDevices?.enumerateDevices) return;
 		try {
@@ -402,7 +410,6 @@ function App() {
 	};
 
 	const startCamera = async (deviceId?: string) => {
-		const leavingIntro = !videoReady();
 		setCameraError(null);
 		setCameraStatus(deviceId ? 'Switching camera' : 'Requesting camera');
 		const previousStream = stream;
@@ -439,7 +446,6 @@ function App() {
 			);
 			setCameraStatus('Camera live');
 			setVideoReady(true);
-			if (leavingIntro && config().connections.length === 0) setEditOpen(true);
 		} catch (error) {
 			nextStream?.getTracks().forEach(track => track.stop());
 			if (previousStream) {
@@ -770,23 +776,30 @@ function App() {
 
 			<section class="camera-stage">
 				<canvas ref={canvas} aria-label="Camera connections visualization" />
-				<video ref={video} class="source-video" aria-hidden="true" />
-				<Show when={!videoReady()}>
-					<div class="camera-empty">
+				<video
+					ref={video}
+					class="source-video"
+					classList={{ 'splash-preview': videoReady() && !introComplete() }}
+					aria-hidden="true"
+				/>
+				<Show when={!introComplete()}>
+					<div class="camera-empty" classList={{ 'has-camera': videoReady() }}>
 						<h1>MIDI from movement</h1>
 						<p>Generate MIDI CC messages using your body's motion</p>
 						<div class="camera-empty-actions">
-							<button class="primary-button" type="button" onClick={() => void startCamera()}>
-								<Video size={17} /> Start camera
-							</button>
+							<Show when={!videoReady()}>
+								<button class="primary-button" type="button" onClick={() => void startCamera()}>
+									<Video size={17} /> Start camera
+								</button>
+							</Show>
 							<Show when={!midiAccess()}>
 								<button class="primary-button" type="button" onClick={connectMidi}>
 									<Cable size={17} /> Enable MIDI
 								</button>
 							</Show>
 						</div>
-						<Show when={cameraError()}>
-							<small class="error-text">{cameraError()}</small>
+						<Show when={cameraError() || midiError()}>
+							{message => <small class="error-text">{message()}</small>}
 						</Show>
 					</div>
 				</Show>

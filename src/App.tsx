@@ -7,12 +7,12 @@ import {
 	ChevronDown,
 	ChevronUp,
 	Copy,
+	Ellipsis,
 	Eye,
 	EyeOff,
-	FilePlus2,
+	FilePlusCorner,
 	FolderOpen,
 	Info,
-	MoreHorizontal,
 	Plus,
 	Save,
 	SlidersHorizontal,
@@ -694,7 +694,7 @@ function App() {
 						<DropdownMenu.Portal>
 							<DropdownMenu.Content class="menu-content">
 								<DropdownMenu.Item class="menu-item" onSelect={newFile}>
-									<FilePlus2 size={15} /> New <kbd>⌘N</kbd>
+									<FilePlusCorner size={15} /> New <kbd>⌘N</kbd>
 								</DropdownMenu.Item>
 								<DropdownMenu.Item
 									class="menu-item"
@@ -1110,7 +1110,7 @@ function App() {
 														class="row-menu-button"
 														aria-label="Connection actions"
 													>
-														<MoreHorizontal size={18} />
+														<Ellipsis size={18} />
 													</DropdownMenu.Trigger>
 													<DropdownMenu.Portal>
 														<DropdownMenu.Content class="menu-content row-menu-content">

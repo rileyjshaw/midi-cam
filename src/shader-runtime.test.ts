@@ -87,10 +87,11 @@ describe('generated ShaderPad program', () => {
 		expect(generated.source).toContain('float leadingPosition = 1.0 - position;');
 		expect(generated.source).toContain('float rainbowHue = fract(u_time * 0.055 + leadingPosition * 0.125);');
 		expect(generated.source).toContain('vec3(rainbowHue, 0.94, 1.0)');
+		expect(generated.source).toContain('return modulateOklabLightness(gradientColor, brightnessWave);');
 		expect(generated.source).toContain('hsv2rgb');
 	});
 
-	it('modulates only color lightness with point A leading by a quarter wavelength', () => {
+	it('pulses perceptual lightness more strongly in OKLab', () => {
 		const config = createDefaultConfig();
 		const connection = createConnection([]);
 		connection.pointA = 'pose:11';
@@ -99,19 +100,22 @@ describe('generated ShaderPad program', () => {
 		config.connections = [connection];
 
 		const generated = generateShader(config);
-		expect(generated.source).toContain('float lightnessPhase = u_time * 0.34 + leadingPosition * 0.25;');
-		expect(generated.source).toContain('float lightness = 0.82 + 0.18 * sin(6.283185 * lightnessPhase);');
+		expect(generated.source).toContain('float brightnessPhase = u_time * 0.75 + leadingPosition * 0.25;');
+		expect(generated.source).toContain('vec3 linearSrgbToOklab(vec3 color)');
+		expect(generated.source).toContain('vec3 oklabToLinearSrgb(vec3 color)');
+		expect(generated.source).toContain('oklab.x = clamp(oklab.x + mix(-0.12, 0.14, wave), 0.02, 0.98);');
+		expect(generated.source).toContain('return modulateOklabLightness(gradientColor, brightnessWave);');
 		expect(generated.source).toContain('vec3 elasticColor_0_0 = elasticGradient(');
 		expect(generated.source).toContain('vec3(0.403922, 0.909804, 0.976471),\n        0.0,');
-		expect(generated.source).toContain('vec2 elasticMask_0_0 = renderGlowingSegmentExpWidth(');
-		expect(generated.source).toContain('69.0,');
-		expect(generated.source).toContain('boostSaturation(elasticColor_0_0, 1.58)');
-		expect(generated.source).toContain('elasticMask_0_0.y * 0.07');
-		expect(generated.source).toContain('elasticColor_0_0 * elasticMask_0_0.x * 0.65');
-		expect(generated.source).not.toContain('lineIntensity += elasticColor_0_0');
-		expect(generated.source).toContain('float linePeak = max(max(lineColor.r, lineColor.g), lineColor.b);');
-		expect(generated.source).toContain('lineColor /= 1.0 + linePeak;');
-		expect(generated.source).not.toContain('lineColor / (1.0 + lineColor)');
+		expect(generated.source).toContain('vec3 elasticMask_0_0 = renderGlowingSegmentExpWidth(');
+		expect(generated.source).toContain('76.0,\n        1.0');
+		expect(generated.source).toContain('sceneColor = compositeElasticStrand(');
+		expect(generated.source).toContain('float thicknessPx = endpointRadiusPx * (');
+		expect(generated.source).toContain('float minThicknessUv = 6.0 / pxPerUv;');
+		expect(generated.source).toContain('float outerGlow = max(falloffEase(dNorm * 0.12)');
+		expect(generated.source).toContain('float coreCoverage = pow(clamp(mask.x, 0.0, 1.0), 0.56);');
+		expect(generated.source).not.toContain('lineColor +=');
+		expect(generated.source).not.toContain('webcamColor + lineColor');
 	});
 
 	it('does not rebuild for MIDI-only edits but does rebuild for shader edits', () => {

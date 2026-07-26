@@ -106,12 +106,12 @@ function connectionBlock(
     ${endpointCode(optionA, personIndex, `pointA_${suffix}`, `validA_${suffix}`)}
     ${endpointCode(optionB, personIndex, `pointB_${suffix}`, `validB_${suffix}`)}
     if (validA_${suffix} && validB_${suffix}) {
-      vec2 elasticMask_${suffix} = renderGlowingSegmentExpWidth(
+      vec3 elasticMask_${suffix} = renderGlowingSegmentExpWidth(
         v_uv,
         pointA_${suffix},
         pointB_${suffix},
-        69.0,
-        1.15
+        76.0,
+        1.0
       );
       vec2 colorSegment_${suffix} = pointB_${suffix} - pointA_${suffix};
       float colorPosition_${suffix} = clamp(
@@ -125,10 +125,11 @@ function connectionBlock(
         ${isRainbow ? '1.0' : '0.0'},
         colorPosition_${suffix}
       );
-      vec3 haloColor_${suffix} = boostSaturation(elasticColor_${suffix}, 1.58);
-      lineIntensity += elasticMask_${suffix}.x * 0.94 + elasticMask_${suffix}.y * 0.07;
-      lineColor += elasticColor_${suffix} * elasticMask_${suffix}.x * 0.65;
-      lineColor += haloColor_${suffix} * elasticMask_${suffix}.y * 0.22;
+      sceneColor = compositeElasticStrand(
+        sceneColor,
+        elasticColor_${suffix},
+        elasticMask_${suffix}
+      );
     }
   }`;
 }
@@ -200,6 +201,53 @@ vec3 hsv2rgb(vec3 c) {
   return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
 }
 
+vec3 srgbToLinear(vec3 color) {
+  vec3 low = color / 12.92;
+  vec3 high = pow((color + 0.055) / 1.055, vec3(2.4));
+  return mix(low, high, step(vec3(0.04045), color));
+}
+
+vec3 linearToSrgb(vec3 color) {
+  vec3 safeColor = max(color, vec3(0.0));
+  vec3 low = safeColor * 12.92;
+  vec3 high = 1.055 * pow(safeColor, vec3(0.416667)) - 0.055;
+  return mix(low, high, step(vec3(0.003131), safeColor));
+}
+
+vec3 linearSrgbToOklab(vec3 color) {
+  vec3 lms = mat3(
+    0.412221, 0.211903, 0.088302,
+    0.536333, 0.680700, 0.281719,
+    0.051446, 0.107397, 0.629979
+  ) * color;
+  vec3 rootLms = pow(max(lms, vec3(0.0)), vec3(0.333333));
+  return mat3(
+    0.210454, 1.977998, 0.025904,
+    0.793618, -2.428592, 0.782772,
+    -0.004072, 0.450594, -0.808676
+  ) * rootLms;
+}
+
+vec3 oklabToLinearSrgb(vec3 color) {
+  vec3 rootLms = mat3(
+    1.0, 1.0, 1.0,
+    0.396338, -0.105561, -0.089484,
+    0.215804, -0.063854, -1.291486
+  ) * color;
+  vec3 lms = rootLms * rootLms * rootLms;
+  return mat3(
+    4.076742, -1.268438, -0.004196,
+    -3.307712, 2.609757, -0.703419,
+    0.230970, -0.341319, 1.707615
+  ) * lms;
+}
+
+vec3 modulateOklabLightness(vec3 color, float wave) {
+  vec3 oklab = linearSrgbToOklab(srgbToLinear(color));
+  oklab.x = clamp(oklab.x + mix(-0.12, 0.14, wave), 0.02, 0.98);
+  return clamp(linearToSrgb(oklabToLinearSrgb(oklab)), 0.0, 1.0);
+}
+
 vec3 boostSaturation(vec3 color, float amount) {
   float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
   return clamp(mix(vec3(luminance), color, amount), 0.0, 1.0);
@@ -207,12 +255,12 @@ vec3 boostSaturation(vec3 color, float amount) {
 
 vec3 elasticGradient(vec3 baseColor, float rainbowMix, float position) {
   float leadingPosition = 1.0 - position;
-  float lightnessPhase = u_time * 0.34 + leadingPosition * 0.25;
-  float lightness = 0.82 + 0.18 * sin(6.283185 * lightnessPhase);
-  vec3 solidColor = baseColor * lightness;
+  float brightnessPhase = u_time * 0.75 + leadingPosition * 0.25;
+  float brightnessWave = 0.5 + 0.5 * sin(6.283185 * brightnessPhase);
   float rainbowHue = fract(u_time * 0.055 + leadingPosition * 0.125);
   vec3 rainbowColor = hsv2rgb(vec3(rainbowHue, 0.94, 1.0));
-  return mix(solidColor, rainbowColor, rainbowMix);
+  vec3 gradientColor = mix(baseColor, rainbowColor, rainbowMix);
+  return modulateOklabLightness(gradientColor, brightnessWave);
 }
 
 vec2 landmarkToViewport(vec2 landmark) {
@@ -220,7 +268,7 @@ vec2 landmarkToViewport(vec2 landmark) {
   return fitCoverInverse(mirroredLandmark, vec2(textureSize(u_webcam, 0)));
 }
 
-vec2 renderGlowingSegmentExpWidth(
+vec3 renderGlowingSegmentExpWidth(
   vec2 uv,
   vec2 p0,
   vec2 p1,
@@ -230,7 +278,7 @@ vec2 renderGlowingSegmentExpWidth(
   float pxPerUv = u_resolution.y;
   sharpnessPx *= 0.01;
   float endpointRadiusUv = endpointRadiusPx / pxPerUv;
-  float minThicknessUv = 3.0 / pxPerUv;
+  float minThicknessUv = 6.0 / pxPerUv;
   vec2 segment = p1 - p0;
   float segmentLengthSq = max(dot(segment, segment), 0.0000001);
   float segmentLength = sqrt(segmentLengthSq);
@@ -248,26 +296,26 @@ vec2 renderGlowingSegmentExpWidth(
   float endpointNorm1 = length(uv - p1) / endpointRadiusUv;
   float dNorm = min(lineNorm, min(endpointNorm0, endpointNorm1));
   float core = falloffEase(dNorm * 0.78) + 0.35 * falloffEase(dNorm * 1.35);
-  float halo = max(falloffEase(dNorm * 0.34) - core * 0.42, 0.0);
-  return vec2(core, halo);
+  float innerGlow = max(falloffEase(dNorm * 0.24) - core * 0.32, 0.0);
+  float outerGlow = max(falloffEase(dNorm * 0.12) - core * 0.55 - innerGlow * 0.4, 0.0);
+  return vec3(core, innerGlow, outerGlow);
+}
+
+vec3 compositeElasticStrand(vec3 backdrop, vec3 strandColor, vec3 mask) {
+  vec3 outerGlowColor = boostSaturation(clamp(strandColor * 1.12, 0.0, 1.0), 1.32);
+  backdrop = mix(backdrop, outerGlowColor, mask.z * 0.14);
+  vec3 innerGlowColor = boostSaturation(clamp(strandColor * 1.32, 0.0, 1.0), 1.22);
+  backdrop = mix(backdrop, innerGlowColor, mask.y * 0.52);
+  float coreCoverage = pow(clamp(mask.x, 0.0, 1.0), 0.56);
+  return mix(backdrop, strandColor, coreCoverage);
 }
 
 void main() {
   vec2 webcamUv = fitCover(vec2(1.0 - v_uv.x, v_uv.y), vec2(textureSize(u_webcam, 0)));
   vec3 webcamColor = texture(u_webcam, webcamUv).rgb;
-  vec3 lineColor = vec3(0.0);
-  float lineIntensity = 0.0;
+  vec3 sceneColor = webcamColor;
   ${blocks}
-  lineColor *= 1.18;
-  lineColor += lineColor * lineColor * 0.25;
-  float linePeak = max(max(lineColor.r, lineColor.g), lineColor.b);
-  lineColor /= 1.0 + linePeak;
-  lineColor = pow(lineColor, vec3(0.52));
-  lineColor = boostSaturation(lineColor, 1.18);
-  outColor = vec4(
-    mix(webcamColor + lineColor, lineColor, clamp(lineIntensity, 0.0, 1.0)),
-    1.0
-  );
+  outColor = vec4(sceneColor, 1.0);
 }`,
 	};
 }

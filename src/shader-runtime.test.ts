@@ -22,7 +22,7 @@ describe('generated ShaderPad program', () => {
 		expect(generated.source).toContain('u_poseMap[1]');
 		expect(generated.source).not.toContain('faceLandmark(');
 		expect(generated.source).not.toContain('handLandmark(');
-		expect(generated.source).toContain('vec3(1.0, 0.301961, 0.427451)');
+		expect(generated.source).toContain('vec3(0.678523, 0.206081, 0.054138)');
 	});
 
 	it('selects hand and face plugins when a cross-category control needs them', () => {
@@ -86,12 +86,13 @@ describe('generated ShaderPad program', () => {
 		expect(generated.source).toContain('uniform float u_time;');
 		expect(generated.source).toContain('float leadingPosition = 1.0 - position;');
 		expect(generated.source).toContain('float rainbowHue = fract(u_time * 0.055 + leadingPosition * 0.125);');
-		expect(generated.source).toContain('vec3(rainbowHue, 0.94, 1.0)');
-		expect(generated.source).toContain('return modulateOklabLightness(gradientColor, brightnessWave);');
-		expect(generated.source).toContain('hsv2rgb');
+		expect(generated.source).toContain('float hueAngle = 6.283185 * fract(rainbowHue + 0.08);');
+		expect(generated.source).toContain('float chroma = 0.20;');
+		expect(generated.source).toContain('elasticRainbowOklab(\n          colorPosition_0_0,');
+		expect(generated.source).not.toContain('hsv2rgb');
 	});
 
-	it('pulses perceptual lightness more strongly in OKLab', () => {
+	it('bakes fixed colors into OKLab and composites gamut-mapped strands in linear RGB', () => {
 		const config = createDefaultConfig();
 		const connection = createConnection([]);
 		connection.pointA = 'pose:11';
@@ -100,20 +101,27 @@ describe('generated ShaderPad program', () => {
 		config.connections = [connection];
 
 		const generated = generateShader(config);
-		expect(generated.source).toContain('float brightnessPhase = u_time * 0.75 + leadingPosition * 0.25;');
-		expect(generated.source).toContain('vec3 linearSrgbToOklab(vec3 color)');
+		expect(generated.source).toContain('float pulseProgress = fract(u_time * 0.3) * 4.0;');
+		expect(generated.source).toContain('float pulseRadiusPx = max(u_resolution.x, u_resolution.y) * 0.005;');
+		expect(generated.source).toContain('float edgeFade = 4.0 * strandPosition * (1.0 - strandPosition);');
 		expect(generated.source).toContain('vec3 oklabToLinearSrgb(vec3 color)');
-		expect(generated.source).toContain('oklab.x = clamp(oklab.x + mix(-0.12, 0.14, wave), 0.02, 0.98);');
-		expect(generated.source).toContain('return modulateOklabLightness(gradientColor, brightnessWave);');
-		expect(generated.source).toContain('vec3 elasticColor_0_0 = elasticGradient(');
-		expect(generated.source).toContain('vec3(0.403922, 0.909804, 0.976471),\n        0.0,');
+		expect(generated.source).toContain('return mix(-0.1, 0.1, pulse * pulse * edgeFade);');
+		expect(generated.source).not.toContain('sin(6.283185 * brightnessPhase)');
+		expect(generated.source).toContain('vec3 elasticOklab_0_0 = elasticSolidOklab(');
+		expect(generated.source).toContain('vec3(0.865073, -0.102703, -0.052506)');
 		expect(generated.source).toContain('vec3 elasticMask_0_0 = renderGlowingSegmentExpWidth(');
 		expect(generated.source).toContain('76.0,\n        1.0');
-		expect(generated.source).toContain('sceneColor = compositeElasticStrand(');
+		expect(generated.source).toContain('elasticMask_0_0.z) > 0.0001');
+		expect(generated.source).toContain('sceneLinear = compositeElasticStrand(');
 		expect(generated.source).toContain('float thicknessPx = endpointRadiusPx * (');
 		expect(generated.source).toContain('float minThicknessUv = 6.0 / pxPerUv;');
 		expect(generated.source).toContain('float outerGlow = max(falloffEase(dNorm * 0.12)');
+		expect(generated.source).toContain('vec3 gamutMapOklabToLinearSrgb(vec3 oklab)');
+		expect(generated.source).toContain('vec3 sceneLinear = srgbToLinear(webcamColor);');
+		expect(generated.source).toContain('linearToSrgb(clamp(sceneLinear, 0.0, 1.0))');
 		expect(generated.source).toContain('float coreCoverage = pow(clamp(mask.x, 0.0, 1.0), 0.56);');
+		expect(generated.source).not.toContain('linearSrgbToOklab');
+		expect(generated.source).not.toContain('boostSaturation');
 		expect(generated.source).not.toContain('lineColor +=');
 		expect(generated.source).not.toContain('webcamColor + lineColor');
 	});

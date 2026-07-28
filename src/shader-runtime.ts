@@ -51,6 +51,22 @@ function hexToRgb(hex: string): [number, number, number] {
 	return [((parsed >> 16) & 255) / 255, ((parsed >> 8) & 255) / 255, (parsed & 255) / 255];
 }
 
+function srgbChannelToLinear(value: number): number {
+	return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+}
+
+function hexToOklab(hex: string): [number, number, number] {
+	const [red, green, blue] = hexToRgb(hex).map(srgbChannelToLinear);
+	const l = Math.cbrt(0.4122214708 * red + 0.5363325363 * green + 0.0514459929 * blue);
+	const m = Math.cbrt(0.2119034982 * red + 0.6806995451 * green + 0.1073969566 * blue);
+	const s = Math.cbrt(0.0883024619 * red + 0.2817188376 * green + 0.6299787005 * blue);
+	return [
+		0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+		1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
+		0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
+	];
+}
+
 function float(value: number): string {
 	return Number.isInteger(value) ? `${value}.0` : value.toFixed(6);
 }
@@ -95,7 +111,7 @@ function connectionBlock(
 	connectionIndex: number,
 ): string {
 	const isRainbow = color === 'rainbow';
-	const [r, g, b] = isRainbow ? [0, 0, 0] : hexToRgb(color);
+	const [lightness, a, b] = isRainbow ? [0, 0, 0] : hexToOklab(color);
 	const suffix = `${connectionIndex}_${personIndex}`;
 	return `
   {
@@ -113,23 +129,36 @@ function connectionBlock(
         76.0,
         1.0
       );
-      vec2 colorSegment_${suffix} = pointB_${suffix} - pointA_${suffix};
-      float colorPosition_${suffix} = clamp(
-        dot(v_uv - pointA_${suffix}, colorSegment_${suffix}) /
-          max(dot(colorSegment_${suffix}, colorSegment_${suffix}), 0.0000001),
-        0.0,
-        1.0
-      );
-      vec3 elasticColor_${suffix} = elasticGradient(
-        vec3(${float(r)}, ${float(g)}, ${float(b)}),
-        ${isRainbow ? '1.0' : '0.0'},
-        colorPosition_${suffix}
-      );
-      sceneColor = compositeElasticStrand(
-        sceneColor,
-        elasticColor_${suffix},
-        elasticMask_${suffix}
-      );
+      if (max(max(elasticMask_${suffix}.x, elasticMask_${suffix}.y), elasticMask_${suffix}.z) > 0.0001) {
+        vec2 colorSegment_${suffix} = pointB_${suffix} - pointA_${suffix};
+        float colorPosition_${suffix} = clamp(
+          dot(v_uv - pointA_${suffix}, colorSegment_${suffix}) /
+            max(dot(colorSegment_${suffix}, colorSegment_${suffix}), 0.0000001),
+          0.0,
+          1.0
+        );
+        float elasticLightnessOffset_${suffix} = elasticLightnessOffset(
+          v_uv,
+          pointA_${suffix},
+          pointB_${suffix}
+        );
+        vec3 elasticOklab_${suffix} = ${
+			isRainbow
+				? `elasticRainbowOklab(
+          colorPosition_${suffix},
+          elasticLightnessOffset_${suffix}
+        )`
+				: `elasticSolidOklab(
+          vec3(${float(lightness)}, ${float(a)}, ${float(b)}),
+          elasticLightnessOffset_${suffix}
+        )`
+		};
+        sceneLinear = compositeElasticStrand(
+          sceneLinear,
+          elasticOklab_${suffix},
+          elasticMask_${suffix}
+        );
+      }
     }
   }`;
 }
@@ -196,11 +225,6 @@ float falloffEase(float x) {
   return t;
 }
 
-vec3 hsv2rgb(vec3 c) {
-  vec3 p = abs(fract(c.xxx + vec3(0.0, 0.666667, 0.333333)) * 6.0 - 3.0);
-  return c.z * mix(vec3(1.0), clamp(p - 1.0, 0.0, 1.0), c.y);
-}
-
 vec3 srgbToLinear(vec3 color) {
   vec3 low = color / 12.92;
   vec3 high = pow((color + 0.055) / 1.055, vec3(2.4));
@@ -212,20 +236,6 @@ vec3 linearToSrgb(vec3 color) {
   vec3 low = safeColor * 12.92;
   vec3 high = 1.055 * pow(safeColor, vec3(0.416667)) - 0.055;
   return mix(low, high, step(vec3(0.003131), safeColor));
-}
-
-vec3 linearSrgbToOklab(vec3 color) {
-  vec3 lms = mat3(
-    0.412221, 0.211903, 0.088302,
-    0.536333, 0.680700, 0.281719,
-    0.051446, 0.107397, 0.629979
-  ) * color;
-  vec3 rootLms = pow(max(lms, vec3(0.0)), vec3(0.333333));
-  return mat3(
-    0.210454, 1.977998, 0.025904,
-    0.793618, -2.428592, 0.782772,
-    -0.004072, 0.450594, -0.808676
-  ) * rootLms;
 }
 
 vec3 oklabToLinearSrgb(vec3 color) {
@@ -242,25 +252,51 @@ vec3 oklabToLinearSrgb(vec3 color) {
   ) * lms;
 }
 
-vec3 modulateOklabLightness(vec3 color, float wave) {
-  vec3 oklab = linearSrgbToOklab(srgbToLinear(color));
-  oklab.x = clamp(oklab.x + mix(-0.12, 0.14, wave), 0.02, 0.98);
-  return clamp(linearToSrgb(oklabToLinearSrgb(oklab)), 0.0, 1.0);
+bool isInLinearSrgbGamut(vec3 color) {
+  return all(greaterThanEqual(color, vec3(0.0))) && all(lessThanEqual(color, vec3(1.0)));
 }
 
-vec3 boostSaturation(vec3 color, float amount) {
-  float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
-  return clamp(mix(vec3(luminance), color, amount), 0.0, 1.0);
+vec3 gamutMapOklabToLinearSrgb(vec3 oklab) {
+  vec3 directColor = oklabToLinearSrgb(oklab);
+  if (isInLinearSrgbGamut(directColor)) return directColor;
+
+  float inGamutScale = 0.0;
+  float outOfGamutScale = 1.0;
+  for (int iteration = 0; iteration < 4; iteration++) {
+    float candidateScale = (inGamutScale + outOfGamutScale) * 0.5;
+    vec3 candidateColor = oklabToLinearSrgb(vec3(oklab.x, oklab.yz * candidateScale));
+    if (isInLinearSrgbGamut(candidateColor)) inGamutScale = candidateScale;
+    else outOfGamutScale = candidateScale;
+  }
+  return clamp(oklabToLinearSrgb(vec3(oklab.x, oklab.yz * inGamutScale)), 0.0, 1.0);
 }
 
-vec3 elasticGradient(vec3 baseColor, float rainbowMix, float position) {
+float elasticLightnessOffset(vec2 uv, vec2 pointA, vec2 pointB) {
+  float pulseProgress = fract(u_time * 0.2) * 3.0;
+  vec2 pulseCenterPx = mix(pointA, pointB, pulseProgress) * u_resolution;
+  float pulseRadiusPx = max(u_resolution.x, u_resolution.y) * 0.05;
+  float pulse = 1.0 - smoothstep(
+    0.0,
+    pulseRadiusPx,
+    distance(uv * u_resolution, pulseCenterPx)
+  );
+  float strandPosition = clamp(pulseProgress, 0.0, 1.0);
+  float edgeFade = 4.0 * strandPosition * (1.0 - strandPosition);
+  return pulse * pulse * edgeFade * 0.1;
+}
+
+vec3 elasticSolidOklab(vec3 baseOklab, float lightnessOffset) {
+  baseOklab.x = clamp(baseOklab.x + lightnessOffset, 0.02, 0.98);
+  return baseOklab;
+}
+
+vec3 elasticRainbowOklab(float position, float lightnessOffset) {
   float leadingPosition = 1.0 - position;
-  float brightnessPhase = u_time * 0.75 + leadingPosition * 0.25;
-  float brightnessWave = 0.5 + 0.5 * sin(6.283185 * brightnessPhase);
   float rainbowHue = fract(u_time * 0.055 + leadingPosition * 0.125);
-  vec3 rainbowColor = hsv2rgb(vec3(rainbowHue, 0.94, 1.0));
-  vec3 gradientColor = mix(baseColor, rainbowColor, rainbowMix);
-  return modulateOklabLightness(gradientColor, brightnessWave);
+  float hueAngle = 6.283185 * fract(rainbowHue + 0.08);
+  float lightness = clamp(0.72 + lightnessOffset, 0.02, 0.98);
+  float chroma = 0.20;
+  return vec3(lightness, chroma * cos(hueAngle), chroma * sin(hueAngle));
 }
 
 vec2 landmarkToViewport(vec2 landmark) {
@@ -301,21 +337,30 @@ vec3 renderGlowingSegmentExpWidth(
   return vec3(core, innerGlow, outerGlow);
 }
 
-vec3 compositeElasticStrand(vec3 backdrop, vec3 strandColor, vec3 mask) {
-  vec3 outerGlowColor = boostSaturation(clamp(strandColor * 1.12, 0.0, 1.0), 1.32);
-  backdrop = mix(backdrop, outerGlowColor, mask.z * 0.14);
-  vec3 innerGlowColor = boostSaturation(clamp(strandColor * 1.32, 0.0, 1.0), 1.22);
-  backdrop = mix(backdrop, innerGlowColor, mask.y * 0.52);
+vec3 compositeElasticStrand(vec3 backdrop, vec3 strandOklab, vec3 mask) {
+  vec3 outerGlowOklab = vec3(
+    clamp(strandOklab.x + 0.14, 0.02, 0.98),
+    strandOklab.yz * 0.72
+  );
+  vec3 outerGlowLinear = gamutMapOklabToLinearSrgb(outerGlowOklab);
+  backdrop = mix(backdrop, outerGlowLinear, mask.z * 0.14);
+  vec3 innerGlowOklab = vec3(
+    clamp(strandOklab.x + 0.08, 0.02, 0.98),
+    strandOklab.yz * 0.90
+  );
+  vec3 innerGlowLinear = gamutMapOklabToLinearSrgb(innerGlowOklab);
+  backdrop = mix(backdrop, innerGlowLinear, mask.y * 0.52);
+  vec3 coreLinear = gamutMapOklabToLinearSrgb(strandOklab);
   float coreCoverage = pow(clamp(mask.x, 0.0, 1.0), 0.56);
-  return mix(backdrop, strandColor, coreCoverage);
+  return mix(backdrop, coreLinear, coreCoverage);
 }
 
 void main() {
   vec2 webcamUv = fitCover(vec2(1.0 - v_uv.x, v_uv.y), vec2(textureSize(u_webcam, 0)));
   vec3 webcamColor = texture(u_webcam, webcamUv).rgb;
-  vec3 sceneColor = webcamColor;
+  vec3 sceneLinear = srgbToLinear(webcamColor);
   ${blocks}
-  outColor = vec4(sceneColor, 1.0);
+  outColor = vec4(linearToSrgb(clamp(sceneLinear, 0.0, 1.0)), 1.0);
 }`,
 	};
 }

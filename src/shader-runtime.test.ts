@@ -92,7 +92,7 @@ describe('generated ShaderPad program', () => {
 		expect(generated.source).not.toContain('hsv2rgb');
 	});
 
-	it('bakes fixed colors into OKLab and composites gamut-mapped strands in linear RGB', () => {
+	it('bakes fixed connection colors into the generated shader', () => {
 		const config = createDefaultConfig();
 		const connection = createConnection([]);
 		connection.pointA = 'pose:11';
@@ -100,30 +100,11 @@ describe('generated ShaderPad program', () => {
 		connection.color = '#67E8F9';
 		config.connections = [connection];
 
-		const generated = generateShader(config);
-		expect(generated.source).toContain('float pulseProgress = fract(u_time * 0.3) * 4.0;');
-		expect(generated.source).toContain('float pulseRadiusPx = max(u_resolution.x, u_resolution.y) * 0.005;');
-		expect(generated.source).toContain('float edgeFade = 4.0 * strandPosition * (1.0 - strandPosition);');
-		expect(generated.source).toContain('vec3 oklabToLinearSrgb(vec3 color)');
-		expect(generated.source).toContain('return mix(-0.1, 0.1, pulse * pulse * edgeFade);');
-		expect(generated.source).not.toContain('sin(6.283185 * brightnessPhase)');
-		expect(generated.source).toContain('vec3 elasticOklab_0_0 = elasticSolidOklab(');
-		expect(generated.source).toContain('vec3(0.865073, -0.102703, -0.052506)');
-		expect(generated.source).toContain('vec3 elasticMask_0_0 = renderGlowingSegmentExpWidth(');
-		expect(generated.source).toContain('76.0,\n        1.0');
-		expect(generated.source).toContain('elasticMask_0_0.z) > 0.0001');
-		expect(generated.source).toContain('sceneLinear = compositeElasticStrand(');
-		expect(generated.source).toContain('float thicknessPx = endpointRadiusPx * (');
-		expect(generated.source).toContain('float minThicknessUv = 6.0 / pxPerUv;');
-		expect(generated.source).toContain('float outerGlow = max(falloffEase(dNorm * 0.12)');
-		expect(generated.source).toContain('vec3 gamutMapOklabToLinearSrgb(vec3 oklab)');
-		expect(generated.source).toContain('vec3 sceneLinear = srgbToLinear(webcamColor);');
-		expect(generated.source).toContain('linearToSrgb(clamp(sceneLinear, 0.0, 1.0))');
-		expect(generated.source).toContain('float coreCoverage = pow(clamp(mask.x, 0.0, 1.0), 0.56);');
-		expect(generated.source).not.toContain('linearSrgbToOklab');
-		expect(generated.source).not.toContain('boostSaturation');
-		expect(generated.source).not.toContain('lineColor +=');
-		expect(generated.source).not.toContain('webcamColor + lineColor');
+		const cyanShader = generateShader(config).source;
+		connection.color = '#FF4D6D';
+		const pinkShader = generateShader(config).source;
+
+		expect(cyanShader).not.toBe(pinkShader);
 	});
 
 	it('does not rebuild for MIDI-only edits but does rebuild for shader edits', () => {

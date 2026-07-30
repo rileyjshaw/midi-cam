@@ -4,7 +4,7 @@ import { render } from 'solid-js/web';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { createConnection, createDefaultConfig } from './config';
-import { loadWorkingConfig, persistWorkingConfig } from './persistence';
+import { loadWorkingConfig, persistWorkingConfig, saveNamedConfig } from './persistence';
 
 vi.mock('./shader-runtime', () => ({
 	createShaderRuntime: vi.fn(() => ({ destroy: vi.fn() })),
@@ -24,6 +24,9 @@ const chooseMenuItem = (label: string) => {
 const pressEscape = () => {
 	document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
 	document.body.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true }));
+};
+const pressNewShortcut = () => {
+	window.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', metaKey: true, bubbles: true, cancelable: true }));
 };
 
 function cameraDevice(deviceId: string, label: string): MediaDeviceInfo {
@@ -135,6 +138,92 @@ describe('application interface', () => {
 
 		expect(document.querySelector('.menu-content')).toBeNull();
 		expect(document.querySelector('.config-dialog')).toBeNull();
+	});
+
+	it('starts a new configuration without warning when no controls have both landmarks', async () => {
+		const incomplete = createDefaultConfig();
+		const connection = createConnection([]);
+		connection.pointA = 'pose:11';
+		incomplete.connections = [connection];
+		incomplete.maxPeople = 4;
+		incomplete.midiOutputId = 'output-1';
+		persistWorkingConfig(incomplete);
+		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+		dispose = render(() => <App />, document.body);
+
+		pressNewShortcut();
+		await settle();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(loadWorkingConfig().connections).toEqual([]);
+	});
+
+	it('warns about unsaved changes before starting a new configuration', async () => {
+		const unsaved = createDefaultConfig();
+		const connection = createConnection([]);
+		connection.pointA = 'pose:11';
+		connection.pointB = 'pose:12';
+		unsaved.connections = [connection];
+		persistWorkingConfig(unsaved);
+		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+		dispose = render(() => <App />, document.body);
+
+		pressNewShortcut();
+		await settle();
+
+		expect(confirm).toHaveBeenCalledWith(
+			'You have unsaved changes to the current configuration. Start a new configuration and discard them?',
+		);
+		expect(loadWorkingConfig().connections).toHaveLength(1);
+	});
+
+	it('does not warn immediately after loading a named configuration', async () => {
+		const named = createDefaultConfig();
+		const connection = createConnection([]);
+		connection.pointA = 'pose:11';
+		connection.pointB = 'pose:12';
+		named.connections = [connection];
+		saveNamedConfig('Stage setup', named);
+		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+		dispose = render(() => <App />, document.body);
+
+		const fileButton = findButton('File');
+		fileButton?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, cancelable: true, button: 0 }));
+		await settle();
+		const loadItem = [...document.querySelectorAll<HTMLElement>('.menu-content .menu-item')].find(item =>
+			item.textContent?.includes('Load'),
+		);
+		loadItem?.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, cancelable: true, button: 0 }));
+		await settle();
+		document.querySelector<HTMLButtonElement>('.saved-config-main')?.click();
+		await settle();
+
+		pressNewShortcut();
+		await settle();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(loadWorkingConfig().connections).toEqual([]);
+	});
+
+	it('ignores incomplete controls when matching the current configuration to a named one', async () => {
+		const current = createDefaultConfig();
+		const complete = createConnection([]);
+		complete.pointA = 'pose:11';
+		complete.pointB = 'pose:12';
+		current.connections = [complete];
+		saveNamedConfig('Stage setup', current);
+		const incomplete = createConnection(current.connections);
+		incomplete.pointA = 'pose:13';
+		current.connections.push(incomplete);
+		persistWorkingConfig(current);
+		const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false);
+		dispose = render(() => <App />, document.body);
+
+		pressNewShortcut();
+		await settle();
+
+		expect(confirm).not.toHaveBeenCalled();
+		expect(loadWorkingConfig().connections).toEqual([]);
 	});
 
 	it('combines quick start and credits in the About dialog', async () => {

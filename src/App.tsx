@@ -1,6 +1,7 @@
 import * as Dialog from '@kobalte/core/dialog';
 import * as DropdownMenu from '@kobalte/core/dropdown-menu';
 import * as Popover from '@kobalte/core/popover';
+import stableStringify from 'fast-json-stable-stringify';
 import {
 	Cable,
 	Check,
@@ -270,6 +271,13 @@ function savedConfigSummary(entry: NamedConfig): string {
 	return `${controls} · ${new Date(entry.updatedAt).toLocaleString()}`;
 }
 
+function comparableConfig(config: AppConfig): AppConfig {
+	return {
+		...config,
+		connections: config.connections.filter(connection => connection.pointA && connection.pointB),
+	};
+}
+
 function App() {
 	const [config, setConfig] = createSignal<AppConfig>(loadWorkingConfig());
 	const [editOpen, setEditOpen] = createSignal(false);
@@ -302,6 +310,12 @@ function App() {
 	const setupComplete = createMemo(
 		() => videoReady() && outputs().some(output => output.id === config().midiOutputId),
 	);
+	const hasUnsavedChanges = createMemo(() => {
+		const current = comparableConfig(config());
+		if (!current.connections.length) return false;
+		const currentSnapshot = stableStringify(current);
+		return !savedConfigs().some(entry => stableStringify(comparableConfig(entry.config)) === currentSnapshot);
+	});
 	let introHandled = false;
 
 	const showToast = (message: string) => {
@@ -574,12 +588,15 @@ function App() {
 
 	const newFile = () => {
 		if (
-			config().connections.length &&
-			!window.confirm('Start a new configuration? Your named configurations will remain available.')
+			hasUnsavedChanges() &&
+			!window.confirm(
+				'You have unsaved changes to the current configuration. Start a new configuration and discard them?',
+			)
 		)
 			return;
 		cancelCalibration();
-		setConfig(clearWorkingConfig());
+		const next = clearWorkingConfig();
+		setConfig(next);
 		setEditOpen(true);
 		showToast('New configuration');
 	};

@@ -121,4 +121,18 @@ describe('generated ShaderPad program', () => {
 		connection.color = '#22D3EE';
 		expect(shaderSignature(config)).not.toBe(initial);
 	});
+	it('uses only the body model and derives face bounds from valid pose indices', () => {
+		const config = createDefaultConfig();
+		const connection = createConnection([]);
+		connection.pointA = 'pose:39';
+		connection.pointB = 'screen:center';
+		config.connections = [connection];
+		const generated = generateShader(config);
+		expect([...generated.sources]).toEqual(['pose', 'screen']);
+		expect(generated.source).toContain('poseLandmark(pointA_0_0Index, 0)');
+		expect(generated.source).toContain('i < 11');
+		expect(generated.source).toContain('pointA_0_0Landmark.w = min(pointA_0_0Landmark.w, landmark.w)');
+		expect(generated.source).not.toContain('poseLandmark(pointA_0_0Index, 39)');
+		expect(generated.source).not.toContain('faceLandmark(');
+	});
 });

@@ -93,4 +93,36 @@ describe('person assignment', () => {
 			y: 1,
 		});
 	});
+	it('derives a body-tracked face center without including shoulders or requiring face detection', () => {
+		const pose = landmarksAt(0.9, 0.9, 33);
+		for (let i = 0; i < 11; i++) pose[i] = { x: 0.2, y: 0.3, z: 0, visibility: 1 };
+		pose[7] = { x: 0.6, y: 0.5, z: 0, visibility: 1 };
+		const snapshots = snapshot({ poses: [pose] });
+		const assignment = new PersonTracker(1).update(snapshots, 100)[0];
+		const option = LANDMARK_BY_ID.get('pose:39')!;
+		const center = resolveLandmark(option, assignment, snapshots);
+		expect(center?.x).toBeCloseTo(0.6);
+		expect(center?.y).toBeCloseTo(0.6);
+		pose[7].visibility = 0.1;
+		expect(resolveLandmark(option, assignment, snapshots)).toBeNull();
+		expect(resolveLandmark(option, assignment, snapshot({}))).toBeNull();
+	});
+	it.each([
+		[33, Array.from({ length: 33 }, (_, i) => i)],
+		[34, [15, 17, 19, 21]],
+		[35, [16, 18, 20, 22]],
+		[36, [27, 29, 31]],
+		[37, [28, 30, 32]],
+		[38, [11, 12, 23, 24]],
+	] as const)('gates derived pose center %i on mean visibility, matching the rendered landmark', (index, indices) => {
+		const pose = landmarksAt(0.25, 0.4, 33);
+		for (const landmark of pose) landmark.visibility = 0.1;
+		const snapshots = snapshot({ poses: [pose] });
+		const assignment = new PersonTracker(1).update(snapshots, 100)[0];
+		const option = LANDMARK_BY_ID.get(`pose:${index}`)!;
+		expect(resolveLandmark(option, assignment, snapshots)).toBeNull();
+		for (const index of indices) pose[index].visibility = 0.8;
+		pose[indices[0]].visibility = 0.1;
+		expect(resolveLandmark(option, assignment, snapshots)).toEqual({ x: 0.75, y: 0.6 });
+	});
 });

@@ -1,3 +1,4 @@
+import { BODY_TRACKING_OPTIONS } from './body-tracking';
 import type { LandmarkGroup, LandmarkOption, LandmarkSource, MeasurementType, Point2D } from './types';
 
 const HAND_LANDMARKS = [
@@ -28,11 +29,11 @@ const FACE_LANDMARKS = [
 	[145, 'Lower right eye'],
 	[168, 'Nose bridge'],
 	[4, 'Nose tip'],
-	[50, 'Left cheek'],
-	[280, 'Right cheek'],
+	[280, 'Left cheek'],
+	[50, 'Right cheek'],
 	[479, 'Mouth center'],
-	[61, 'Left mouth corner'],
-	[291, 'Right mouth corner'],
+	[291, 'Left mouth corner'],
+	[61, 'Right mouth corner'],
 	[13, 'Upper lip'],
 	[14, 'Lower lip'],
 	[152, 'Chin'],
@@ -93,16 +94,34 @@ const handOptions = (side: 'left' | 'right') =>
 		}),
 	);
 
+const bodyTrackedOptions = (region: 'face' | 'hand') =>
+	BODY_TRACKING_OPTIONS.filter(option =>
+		region === 'face'
+			? option.view === 'face'
+			: option.view !== 'face' && !['pose:34', 'pose:35'].includes(option.poseId),
+	).map(option => {
+		const side = option.view === 'left-hand' ? 'left' : option.view === 'right-hand' ? 'right' : undefined;
+		const name = `${side ? `${side} ` : ''}${option.label.toLowerCase()}`;
+		return makeOption(option.poseId, `Body-tracked ${name}`, 'pose', {
+			index: Number(option.poseId.split(':')[1]),
+			side,
+			detail: `BODY · ${region.toUpperCase()}`,
+		});
+	});
+
 export const LANDMARK_GROUPS: LandmarkGroup[] = [
 	{
 		label: 'HAND',
-		options: [...handOptions('left'), ...handOptions('right')],
+		options: [...handOptions('left'), ...handOptions('right'), ...bodyTrackedOptions('hand')],
 	},
 	{
 		label: 'FACE',
-		options: FACE_LANDMARKS.map(([index, label]) =>
-			makeOption(`face:${index}`, label, 'face', { index, detail: `FACE · ${index}` }),
-		),
+		options: [
+			...FACE_LANDMARKS.map(([index, label]) =>
+				makeOption(`face:${index}`, label, 'face', { index, detail: `FACE · ${index}` }),
+			),
+			...bodyTrackedOptions('face'),
+		],
 	},
 	{
 		label: 'BODY',

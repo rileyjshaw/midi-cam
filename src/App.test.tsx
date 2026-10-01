@@ -73,6 +73,35 @@ describe('application interface', () => {
 		vi.restoreAllMocks();
 	});
 
+	it('keeps combobox suggestions accessible inside the Edit dialog', async () => {
+		dispose = render(() => <App />, document.body);
+		findButton('Edit')?.click();
+		await settle();
+		const input = document.querySelector<HTMLInputElement>('input[aria-label="Point A"]')!;
+		input.focus();
+		await settle();
+		const picker = document.querySelector<HTMLElement>('.landmark-skeleton')!;
+		expect(picker).not.toBeNull();
+		expect(document.querySelector('[role="listbox"]')?.closest('[aria-hidden="true"]')).toBeNull();
+		expect(getComputedStyle(input).pointerEvents).not.toBe('none');
+		expect(getComputedStyle(document.querySelector('.config-dialog')!).pointerEvents).not.toBe('none');
+		picker.querySelector<HTMLButtonElement>('[aria-label="Explore face"]')!.click();
+		picker.querySelector<HTMLButtonElement>('[aria-label="Face settings"]')!.click();
+		await settle();
+		const toggle = picker.querySelector<HTMLInputElement>('[role="switch"]')!;
+		toggle.focus();
+		expect(document.activeElement).toBe(toggle);
+		expect(toggle.closest('[aria-hidden="true"]')).toBeNull();
+		toggle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+		await settle();
+		expect(document.querySelector('.landmark-settings')).toBeNull();
+		expect(input.getAttribute('aria-expanded')).toBe('true');
+		pressEscape();
+		await settle();
+		expect(input.getAttribute('aria-expanded')).toBe('false');
+		expect(document.querySelector('.config-dialog')).not.toBeNull();
+	});
+
 	it('opens Edit on Escape when there is nothing else to close', async () => {
 		dispose = render(() => <App />, document.body);
 		expect(document.querySelector('.config-dialog')).toBeNull();

@@ -79,7 +79,20 @@ function endpointCode(option: LandmarkOption, personIndex: number, pointName: st
 		return `
       int ${pointName}Index = u_poseMap[${personIndex}];
       if (${pointName}Index >= 0) {
-        vec4 ${pointName}Landmark = poseLandmark(${pointName}Index, ${option.index ?? 0});
+        ${
+			option.index === 39
+				? `vec4 ${pointName}Landmark = poseLandmark(${pointName}Index, 0);
+        vec2 ${pointName}Min = ${pointName}Landmark.xy;
+        vec2 ${pointName}Max = ${pointName}Landmark.xy;
+        for (int i = 1; i < 11; i++) {
+          vec4 landmark = poseLandmark(${pointName}Index, i);
+          ${pointName}Min = min(${pointName}Min, landmark.xy);
+          ${pointName}Max = max(${pointName}Max, landmark.xy);
+          ${pointName}Landmark.w = min(${pointName}Landmark.w, landmark.w);
+        }
+        ${pointName}Landmark.xy = (${pointName}Min + ${pointName}Max) * 0.5;`
+				: `vec4 ${pointName}Landmark = poseLandmark(${pointName}Index, ${option.index ?? 0});`
+		}
         ${pointName} = landmarkToViewport(${pointName}Landmark.xy);
         ${validName} = ${pointName}Landmark.w >= 0.35;
       }`;
@@ -126,7 +139,7 @@ function connectionBlock(
         v_uv,
         pointA_${suffix},
         pointB_${suffix},
-        76.0,
+        228.0,
         1.0
       );
       if (max(max(elasticMask_${suffix}.x, elasticMask_${suffix}.y), elasticMask_${suffix}.z) > 0.0001) {
@@ -314,7 +327,7 @@ vec3 renderGlowingSegmentExpWidth(
   float pxPerUv = u_resolution.y;
   sharpnessPx *= 0.01;
   float endpointRadiusUv = endpointRadiusPx / pxPerUv;
-  float minThicknessUv = 6.0 / pxPerUv;
+  float minThicknessUv = 18.0 / pxPerUv;
   vec2 segment = p1 - p0;
   float segmentLengthSq = max(dot(segment, segment), 0.0000001);
   float segmentLength = sqrt(segmentLengthSq);

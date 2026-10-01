@@ -242,6 +242,11 @@ export class PersonTracker {
 
 function poseDerived(index: number, pose: NormalizedLandmark[]): Point2D | null {
 	if (index < 33) return point(pose[index]);
+	if (index === 39) {
+		const face = pose.slice(0, 11);
+		if (face.length !== 11 || face.some(landmark => (landmark.visibility ?? 1) < 0.35)) return null;
+		return boundsCenter(face);
+	}
 	const groups: Record<number, number[]> = {
 		33: Array.from({ length: 33 }, (_, i) => i),
 		34: [15, 17, 19, 21],
@@ -250,7 +255,11 @@ function poseDerived(index: number, pose: NormalizedLandmark[]): Point2D | null 
 		37: [28, 30, 32],
 		38: [11, 12, 23, 24],
 	};
-	return boundsCenter(pose, groups[index]);
+	const indices = groups[index];
+	if (!indices || indices.some(index => !pose[index])) return null;
+	// ShaderPad stores the mean visibility in each derived pose landmark's w component.
+	const visibility = indices.reduce((sum, index) => sum + (pose[index].visibility ?? 1), 0) / indices.length;
+	return visibility < 0.35 ? null : boundsCenter(pose, indices);
 }
 
 function faceDerived(index: number, face: NormalizedLandmark[]): Point2D | null {
